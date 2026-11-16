@@ -18,6 +18,7 @@
 <script src="lib/mammoth.browser.min.js"></script>
 <script src="js/stockage.js"></script>
 <script src="js/word.js"></script>
+<script src="js/modeles.js"></script>
 <style>
 :root{
   --desk:#E3E7EE; --bar:#FFFFFF; --ink:#1B2A4A; --ink-soft:#56627C; --line:#CBD2DE;
@@ -142,6 +143,27 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .dlg-champ{border:1px dashed var(--champ-line);background:var(--champ);color:#3D3310;border-radius:6px;padding:5px 8px;font-size:14px;text-align:left}
 .dlg-plus{color:var(--ink-soft);font-size:14px;align-self:center}
 .dlg-liste{margin:6px 0 10px;padding-left:20px;line-height:1.5;font-size:14.5px}
+.btn.danger{background:#B3261E;border-color:#B3261E;color:#fff}
+.coord-bandeau{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bar);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 12px 10px 14px;margin:-8px 0 26px;font-size:14px;color:var(--ink-soft)}
+.coord-bandeau span{flex:1 1 220px;line-height:1.4}
+.form-coord{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;max-height:62vh;overflow:auto;padding:2px}
+.form-coord label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--ink-soft)}
+.form-coord label.large{grid-column:1/-1}
+.form-coord input[type=text],.form-coord input[type=tel],.form-coord input[type=email],.dlg input[type=text]{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:400;color:var(--ink);background:var(--desk);width:100%}
+.form-coord .img-champ{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:400}
+.form-coord .img-champ img{max-height:48px;max-width:120px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px}
+.form-coord .case{flex-direction:row;align-items:center;gap:8px;font-weight:500;color:var(--ink);font-size:14px}
+@media (max-width:600px){.form-coord{grid-template-columns:1fr}}
+.boite.dlg.large{max-width:560px}
+.recherche{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px;background:var(--bar);margin:0 0 10px}
+.ligne .plus{border:0;background:none;color:var(--ink-soft);font-size:18px;padding:2px 10px;border-radius:6px;line-height:1}
+.ligne .plus:hover{background:var(--hover);color:var(--ink)}
+#page img.choisie{outline:2px solid var(--accent);outline-offset:2px}
+#page table.entete td{border:0 !important;padding:2px 4px}
+#barre-image{position:absolute;z-index:22;background:var(--bar);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:4px;display:flex;gap:2px;flex-wrap:wrap;max-width:calc(100vw - 16px)}
+#barre-image button{border:0;background:none;padding:7px 10px;border-radius:7px;font-size:14px;color:var(--ink)}
+#barre-image button:hover{background:var(--hover)}
+#barre-image .danger{color:#B3261E}
 .dlg-note{color:var(--ink-soft);font-size:14px}
 .installer{display:flex;align-items:center;gap:12px;background:var(--bar);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 12px 12px 14px;margin:0 0 26px}
 .installer img{border-radius:9px;flex:none;box-shadow:0 0 0 1px var(--line)}
@@ -212,6 +234,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .menu button{background:none;border:0;text-align:left;padding:10px 12px;border-radius:7px;font-size:15px;color:var(--ink)}
 .menu button:hover{background:var(--hover)}
 .menu .tel-seul{display:none}
+.menu .si-tableau.hidden{display:none !important}
 #b-plus-outils{display:none}
 @media (max-width:600px){
   .top{padding:6px 8px;gap:6px;flex-wrap:nowrap}
@@ -270,8 +293,17 @@ body.clavier #editeur{padding-bottom:12px}
     <div id="menu" class="menu hidden" role="menu">
       <button role="menuitem" data-clic="#b-imprimer" class="tel-seul">Imprimer / PDF</button>
       <button role="menuitem" data-clic="#b-html">Exporter en page web (.html)</button>
+      <button role="menuitem" data-clic="#b-image">Insérer une image ou une signature</button>
+      <button role="menuitem" data-clic="#b-entete">Insérer mon papier à en-tête</button>
+      <button role="menuitem" data-clic="#b-ligne-plus" class="si-tableau">Ajouter une ligne au tableau</button>
+      <button role="menuitem" data-clic="#b-ligne-moins" class="si-tableau">Supprimer la ligne du tableau</button>
+      <button role="menuitem" data-clic="#b-coord">Mes coordonnées</button>
       <button role="menuitem" data-clic="#b-ouvrir" class="tel-seul">Ouvrir un fichier</button>
     </div>
+    <button class="hidden" id="b-entete" tabindex="-1" aria-hidden="true"></button>
+    <button class="hidden" id="b-ligne-plus" tabindex="-1" aria-hidden="true"></button>
+    <button class="hidden" id="b-ligne-moins" tabindex="-1" aria-hidden="true"></button>
+    <input type="file" id="fichier-image" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" class="hidden">
     <input type="file" id="fichier" accept=".docx,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" class="hidden">
   </div>
   <div class="outils hidden" id="outils">
@@ -311,6 +343,7 @@ body.clavier #editeur{padding-bottom:12px}
     </div>
     <div class="groupe secondaire">
       <button class="ob" id="b-saut" title="Insérer un saut de page"><svg viewBox="0 0 24 24"><path d="M6 3v5h12V3M6 21v-5h12v5"/><path d="M3 12h3M9 12h2M13 12h2M18 12h3"/></svg></button>
+      <button class="ob" id="b-image" title="Insérer une image, un logo ou une signature scannée"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5L20 17"/></svg></button>
       <button class="ob" id="b-tableau" title="Insérer un tableau 3 × 3"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 15h16M9.5 5v14M14.5 5v14"/></svg></button>
     </div>
     <div class="groupe">
@@ -332,11 +365,13 @@ body.clavier #editeur{padding-bottom:12px}
   </div>
   <h1>Que voulez-vous écrire ?</h1>
   <p class="sous">Choisissez un type de texte : la mise en page est prête, il ne reste qu’à remplir les champs surlignés. Touchez un champ pour le remplacer, ou utilisez Tab pour passer au suivant.</p>
+  <div class="coord-bandeau"><span id="coord-resume">Saisissez une fois vos coordonnées, votre logo et votre signature : ils rempliront vos documents.</span><button class="btn" id="b-coord">Mes coordonnées</button></div>
   <div class="modeles" id="modeles"></div>
   <div class="docs-titre"><span>Vos documents</span>
     <span class="docs-actions"><button class="lien" id="b-sauvegarder" title="Enregistrer tous vos documents dans un seul fichier, à garder en lieu sûr">Sauvegarder tout</button><button class="lien" id="b-restaurer" title="Reprendre les documents d’un fichier de sauvegarde">Restaurer</button></span>
   </div>
   <div id="memoire-seule" class="avert hidden">Ce navigateur ne permet pas de garder vos documents après sa fermeture. Pensez à « Sauvegarder tout » avant de quitter.</div>
+  <input type="search" id="recherche" class="recherche hidden" placeholder="Rechercher un document (titre ou texte)" aria-label="Rechercher un document">
   <div class="liste" id="liste"><div class="vide">Chargement de vos documents…</div></div>
   <input type="file" id="fichier-sauvegarde" accept=".json,application/json" class="hidden">
   <footer class="credit">
@@ -371,6 +406,9 @@ body.clavier #editeur{padding-bottom:12px}
   <div class="alerte-boutons"><button class="btn" id="b-alerte-reessayer">Réessayer</button><button class="btn" id="b-alerte-fichier">Sauvegarder dans un fichier</button><button class="btn hidden" id="b-alerte-fermer">Fermer</button></div>
 </div>
 
+<div id="barre-image" class="hidden" role="toolbar" aria-label="Image">
+  <button data-taille="120">Petite</button><button data-taille="250">Moyenne</button><button data-taille="450">Grande</button><button data-taille="605">Pleine largeur</button><button data-action="suppr" class="danger">Supprimer</button>
+</div>
 <div id="popup" class="hidden" role="listbox"></div>
 <div id="toast" class="hidden" role="status"></div>
 
@@ -382,62 +420,20 @@ body.clavier #editeur{padding-bottom:12px}
 const $ = s => document.querySelector(s);
 const page = $("#page");
 const dateFr = () => new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
-const champ = t => `<span class="champ" spellcheck="false">[${t}]</span>`;
+const champ = (t, cle) => `<span class="champ" spellcheck="false"${cle ? ` data-cle="${cle}"` : ""}>[${t}]</span>`;
 const sansAccent = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 function lire(cle, defaut){ try{ const v = localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; }catch(e){ return defaut; } }
 function ecrire(cle, val){ try{ localStorage.setItem(cle, JSON.stringify(val)); return true; }catch(e){ return false; } }
 let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.add("hidden"),3200); }
 
-/* ---------- Modèles ---------- */
+/* ---------- Modèles (js/modeles.js) et « Mes coordonnées » ---------- */
 const droite = h => `<p style="text-align:right">${h}</p>`;
-const expediteur = `<p>${champ("Prénom NOM")}</p><p>${champ("Adresse")}</p><p>${champ("Ville")}</p><p>${champ("Téléphone")} – ${champ("adresse e-mail")}</p><p><br></p>`;
-const destinataire = `${droite(champ("Nom ou fonction du destinataire"))}${droite(champ("Organisme"))}${droite(champ("Adresse"))}${droite(champ("Ville"))}<p><br></p>`;
-const lieuDate = () => droite(`Fait à ${champ("Ville")}, le ${dateFr()}`) + "<p><br></p>";
-const signature = `<p><br></p>${droite(champ("Prénom NOM"))}${droite(champ("Signature"))}`;
-
-const MODELES = [
-  { id:"vierge", nom:"Page vierge", desc:"Commencez de zéro.", titre:"Document sans titre", html:()=>"<p><br></p>" },
-  { id:"demande", nom:"Lettre de demande", desc:"Solliciter un document, une autorisation, un service.", titre:"Lettre de demande",
-    html:()=> expediteur + destinataire + lieuDate() +
-      `<p><b>Objet : demande de ${champ("objet de la demande")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
-      `<p style="text-align:justify">J’ai l’honneur de solliciter de votre haute bienveillance ${champ("décrivez précisément votre demande")}.</p>` +
-      `<p style="text-align:justify">En effet, ${champ("exposez le contexte et les raisons de votre demande")}.</p>` +
-      `<p style="text-align:justify">Vous trouverez ci-joint les pièces justificatives nécessaires. Je reste à votre disposition pour tout renseignement complémentaire.</p>` +
-      `<p style="text-align:justify">Dans l’attente d’une suite favorable, je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
-  { id:"reclamation", nom:"Lettre de réclamation", desc:"Contester une facture, signaler un problème.", titre:"Lettre de réclamation",
-    html:()=> expediteur + destinataire + lieuDate() +
-      `<p><b>Objet : réclamation concernant ${champ("objet de la réclamation")}</b></p><p>Référence : ${champ("numéro de dossier, de facture ou de client")}</p><p><br></p><p>Madame, Monsieur,</p>` +
-      `<p style="text-align:justify">Le ${champ("date")}, ${champ("décrivez les faits : achat, service, incident")}.</p>` +
-      `<p style="text-align:justify">Or, ${champ("expliquez le problème constaté")}. Cette situation me cause un préjudice, car ${champ("conséquences pour vous")}.</p>` +
-      `<p style="text-align:justify">Je vous demande donc de bien vouloir ${champ("ce que vous attendez : remboursement, réparation, correction")}. Sans réponse de votre part dans un délai de ${champ("quinze")} jours, je me verrai contraint(e) d’engager les démarches nécessaires.</p>` +
-      `<p style="text-align:justify">Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
-  { id:"attestation", nom:"Attestation sur l’honneur", desc:"Certifier une situation ou un fait.", titre:"Attestation sur l’honneur",
-    html:()=> `<p><br></p><h1 style="text-align:center">Attestation sur l’honneur</h1><p><br></p>` +
-      `<p style="text-align:justify">Je soussigné(e) ${champ("Prénom NOM")}, né(e) le ${champ("date de naissance")} à ${champ("lieu de naissance")}, demeurant à ${champ("adresse")}, titulaire de la pièce d’identité n° ${champ("numéro")},</p>` +
-      `<p style="text-align:justify">atteste sur l’honneur que ${champ("énoncez le fait que vous certifiez")}.</p><p><br></p>` +
-      `<p style="text-align:justify">Je suis informé(e) que toute fausse déclaration m’expose à des poursuites.</p>` +
-      `<p style="text-align:justify">Fait pour servir et valoir ce que de droit.</p><p><br></p>` + lieuDate() + signature },
-  { id:"motivation", nom:"Lettre de motivation", desc:"Accompagner une candidature à un emploi ou un stage.", titre:"Lettre de motivation",
-    html:()=> expediteur + destinataire + lieuDate() +
-      `<p><b>Objet : candidature au poste de ${champ("intitulé du poste")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
-      `<p style="text-align:justify">Votre annonce parue ${champ("où et quand")} a retenu toute mon attention. ${champ("Ce qui vous attire dans l’entreprise")}.</p>` +
-      `<p style="text-align:justify">Titulaire d’un ${champ("diplôme")}, j’ai acquis une expérience en ${champ("domaine")} au cours de ${champ("expériences principales")}. J’y ai développé ${champ("compétences clés")}.</p>` +
-      `<p style="text-align:justify">Rejoindre votre équipe me permettrait de ${champ("ce que vous apporterez")}.</p>` +
-      `<p style="text-align:justify">Je me tiens à votre disposition pour un entretien à votre convenance. Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
-  { id:"conge", nom:"Demande de congé", desc:"Demander un congé ou une permission d’absence.", titre:"Demande de congé",
-    html:()=> expediteur + destinataire + lieuDate() +
-      `<p><b>Objet : demande de ${champ("congé annuel / permission d’absence")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
-      `<p style="text-align:justify">J’ai l’honneur de solliciter un ${champ("type de congé")} du ${champ("date de début")} au ${champ("date de fin")} inclus, soit ${champ("nombre")} jours.</p>` +
-      `<p style="text-align:justify">Cette demande est motivée par ${champ("motif")}. J’ai pris soin d’organiser la continuité de mes tâches avec ${champ("collègue")}.</p>` +
-      `<p style="text-align:justify">Je vous remercie par avance de l’attention que vous porterez à ma demande et vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations respectueuses.</p>` + signature },
-  { id:"explication", nom:"Demande d’explication", desc:"Demander par écrit des explications sur des faits.", titre:"Demande d’explication",
-    html:()=> `<p>${champ("Nom de l’organisme")}</p><p>${champ("Service")}</p><p><br></p>` + droite(`À ${champ("Prénom NOM, fonction")}`) + "<p><br></p>" + lieuDate() +
-      `<p><b>Objet : demande d’explication</b></p><p><br></p><p>${champ("Madame / Monsieur")},</p>` +
-      `<p style="text-align:justify">Il m’a été rapporté que le ${champ("date")}, ${champ("décrivez les faits de manière précise et neutre")}.</p>` +
-      `<p style="text-align:justify">Ces faits constituent ${champ("manquement constaté")}. Je vous demande de bien vouloir me fournir, par écrit et dans un délai de ${champ("48 heures")}, toutes les explications utiles sur ces faits.</p>` +
-      `<p style="text-align:justify">Veuillez agréer, ${champ("Madame / Monsieur")}, l’expression de mes salutations distinguées.</p>` + signature }
-];
+const echapHtml = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+let COORD = {};   // Mes coordonnées : nom, fonction, entreprise, adresse, ville, tel, email, mentions, logo, signature, entete
+const aCoord = () => !!(COORD && (COORD.nom || COORD.entreprise || COORD.logo));
+const avecEntete = () => !!(COORD && COORD.entete && aCoord());
+const MODELES = CiBModeles({ champ, droite, dateFr, avecEntete });
 
 /* ---------- Documents enregistrés ---------- */
 /* Chaque document est enregistré à part (IndexedDB, ou fichiers natifs sous Android : voir js/stockage.js).
@@ -452,7 +448,7 @@ const nouvelId = () => "d" + Date.now() + Math.random().toString(36).slice(2, 6)
 const titreDoc = () => $("#titre").value.trim() || "Document sans titre";
 const canal = ("BroadcastChannel" in window) ? new BroadcastChannel("editeurcib") : null;
 
-function instantane(){ return { id: courant, titre: titreDoc(), html: page.innerHTML, maj: Date.now(), onglet: ONGLET }; }
+function instantane(){ return { id: courant, titre: titreDoc(), html: page.innerHTML.replace(/ class="choisie"/g, ""), maj: Date.now(), onglet: ONGLET }; }
 function sauver(){
   clearTimeout(sauverT);
   if(!courant || !Depot) return fileSauver;
@@ -544,7 +540,35 @@ async function ouvrirExistant(id){
   if(!d){ toast("Ce document n’a pas pu être ouvert."); rendreAccueil(); return; }
   ouvrirDoc(d.id, d.titre, d.html, d.maj || 1);
 }
-function nouveauDepuis(m){ ouvrirDoc(nouvelId(), m.titre, m.html()); }
+function nouveauDepuis(m){
+  ouvrirDoc(nouvelId(), m.titre, remplirCoordonnees(m.html()));
+  if(m.aide) setTimeout(()=>toast("Montants et totaux se calculent tout seuls. Nouvelle ligne : Tab dans la case Montant, ou menu ⋯."), 400);
+}
+// Remplit les champs reliés à « Mes coordonnées » et ajoute le papier à en-tête (A3).
+function remplirCoordonnees(html){
+  const d = document.createElement("div"); d.innerHTML = html;
+  d.querySelectorAll(".champ[data-cle]").forEach(c=>{
+    const cle = c.dataset.cle;
+    if(cle === "signature"){
+      if(COORD.signature){ const img = document.createElement("img"); img.src = COORD.signature; img.alt = "Signature"; img.style.width = "160px"; c.replaceWith(img); }
+      return;
+    }
+    const v = COORD[cle]; if(v && String(v).trim()) c.replaceWith(document.createTextNode(String(v).trim()));
+  });
+  return (avecEntete() ? htmlEntete() : "") + d.innerHTML;
+}
+function htmlEntete(){
+  const C = COORD, l = [];
+  const titre = C.entreprise || C.nom;
+  if(titre) l.push(`<b><span style="font-size:14pt">${echapHtml(titre)}</span></b>`);
+  if(C.entreprise && C.nom) l.push(echapHtml(C.nom + (C.fonction ? ", " + C.fonction : "")));
+  const adr = [C.adresse, C.ville].filter(Boolean).join(" – "); if(adr) l.push(echapHtml(adr));
+  const tel = [C.tel ? "Tél. " + C.tel : "", C.email || ""].filter(Boolean).join(" – "); if(tel) l.push(echapHtml(tel));
+  if(C.mentions) l.push(`<span style="font-size:10pt">${echapHtml(C.mentions)}</span>`);
+  const texte = `<td style="text-align:${C.logo ? "right" : "left"};vertical-align:middle">${l.join("<br>")}</td>`;
+  const logo = C.logo ? `<td style="width:30%;vertical-align:middle"><img src="${C.logo}" alt="Logo" style="width:110px"></td>` : "";
+  return `<table class="sans-bordure entete"><tbody><tr>${logo}${texte}</tr></tbody></table><hr><p><br></p>`;
+}
 async function quitterEditeur(){
   // On ne quitte pas l’éditeur tant que le document n’est pas enregistré (l’alerte reste affichée).
   if(courant && !(await sauver())) return;
@@ -556,7 +580,7 @@ async function sauvegarderTout(){
   try{
     if(courant) await sauver();
     let texte;
-    try{ texte = await CiBStockage.exporterTout(Depot, {}); }
+    try{ texte = await CiBStockage.exporterTout(Depot, { coordonnees: COORD }); }
     catch(e){ texte = null; }
     // Même si l’appareil refuse d’enregistrer, le document ouvert est inclus dans le fichier.
     if(courant){
@@ -577,6 +601,7 @@ $("#fichier-sauvegarde").addEventListener("change", async e=>{
   const f = e.target.files[0]; e.target.value = ""; if(!f) return;
   try{
     const r = await CiBStockage.importerTout(Depot, await f.text());
+    if(r.reglages && r.reglages.coordonnees && !aCoord()){ COORD = r.reglages.coordonnees; try{ await Depot.regler("coordonnees", COORD); }catch(e){} majResumeCoord(); }
     if(canal) canal.postMessage({type:"maj", onglet: ONGLET});
     await rendreAccueil();
     toast(r.ajoutes ? (r.ajoutes + (r.ajoutes>1 ? " documents restaurés" : " document restauré") + (r.aJour ? " (" + r.aJour + " déjà à jour)" : "") + ".")
@@ -624,7 +649,16 @@ async function rendreAccueil(){
   if(jeton !== jetonAccueil) return;
   metas.sort((a,b)=>(b.maj||0)-(a.maj||0));
   liste.innerHTML = "";
+  $("#recherche").classList.toggle("hidden", metas.length < 2);
   if(!metas.length){ liste.innerHTML = `<div class="vide">Aucun document pour l’instant. Choisissez un modèle ci-dessus pour commencer.</div>`; return; }
+  // Recherche dans le titre et dans le texte.
+  const q = sansAccent($("#recherche").value.trim());
+  if(q){
+    const textes = await textesDocuments(metas);
+    if(jeton !== jetonAccueil) return;
+    metas = metas.filter(d=>sansAccent(d.titre||"").includes(q) || (textes[d.id]||"").includes(q));
+    if(!metas.length){ liste.innerHTML = `<div class="vide">Aucun document ne contient « ${echapHtml($("#recherche").value.trim())} ».</div>`; return; }
+  }
   metas.forEach(d=>{
     const id = d.id;
     const l = document.createElement("div"); l.className = "ligne";
@@ -632,15 +666,53 @@ async function rendreAccueil(){
     nom.addEventListener("click", ()=>ouvrirExistant(id));
     const t = document.createElement("time");
     t.textContent = new Date(d.maj).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
-    const s = document.createElement("button"); s.className="suppr"; s.textContent="Supprimer";
-    s.addEventListener("click", ()=>{
-      if(!s.classList.contains("confirmer")){ s.classList.add("confirmer"); s.textContent="Confirmer"; setTimeout(()=>{s.classList.remove("confirmer"); s.textContent="Supprimer";},3000); return; }
-      Depot.supprimer(id).catch(()=>toast("Ce document n’a pas pu être supprimé.")).then(()=>{ if(canal) canal.postMessage({type:"maj", onglet: ONGLET}); rendreAccueil(); });
-    });
+    const s = document.createElement("button"); s.className="plus"; s.textContent="⋯";
+    s.setAttribute("aria-label", "Actions pour « " + d.titre + " »"); s.title = "Renommer, dupliquer, supprimer";
+    s.addEventListener("click", ()=>actionsDocument(d));
     l.append(nom,t,s); liste.appendChild(l);
   });
 }
 // Vignettes : recalculées quand leur taille change, jamais quand l'accueil est caché (B12).
+// Texte de chaque document (sans accents), lu une fois pour la recherche.
+const cacheTextes = {};
+async function textesDocuments(metas){
+  const div = document.createElement("div");
+  for(const m of metas){
+    const c = cacheTextes[m.id];
+    if(c && c.maj === m.maj) continue;
+    let html = ""; try{ const d = await Depot.lire(m.id); html = d ? d.html : ""; }catch(e){}
+    div.innerHTML = html.replace(/<img[^>]*>/g, "");
+    cacheTextes[m.id] = { maj: m.maj, texte: sansAccent(div.textContent) };
+  }
+  const r = {}; metas.forEach(m=>{ r[m.id] = cacheTextes[m.id] ? cacheTextes[m.id].texte : ""; }); return r;
+}
+let rechercheT;
+$("#recherche").addEventListener("input", ()=>{ clearTimeout(rechercheT); rechercheT = setTimeout(rendreAccueil, 200); });
+function apresModifListe(){ if(canal) canal.postMessage({type:"maj", onglet: ONGLET}); rendreAccueil(); }
+async function actionsDocument(m){
+  const choix = await dialogue({ titre: m.titre, boutons: [
+    {libelle:"Ouvrir", valeur:"ouvrir", primaire:true}, {libelle:"Renommer", valeur:"renommer"}, {libelle:"Dupliquer", valeur:"dupliquer"}, {libelle:"Supprimer", valeur:"supprimer"}, {libelle:"Annuler", valeur:null}] });
+  if(choix === "ouvrir") return ouvrirExistant(m.id);
+  if(choix === "renommer"){
+    const champTitre = document.createElement("input"); champTitre.type = "text"; champTitre.value = m.titre; champTitre.setAttribute("aria-label", "Nouveau titre");
+    const ok = await dialogue({ titre: "Renommer le document", contenu: champTitre, boutons: [{libelle:"Renommer", valeur:"ok", primaire:true}, {libelle:"Annuler", valeur:null}], focus: champTitre });
+    const t = champTitre.value.trim();
+    if(ok !== "ok" || !t || t === m.titre) return;
+    try{ const d = await Depot.lire(m.id); d.titre = t; d.maj = Date.now(); d.onglet = ONGLET; await Depot.ecrire(d); toast("Document renommé."); }catch(e){ toast("Le document n’a pas pu être renommé."); }
+    return apresModifListe();
+  }
+  if(choix === "dupliquer"){
+    try{ const d = await Depot.lire(m.id); await Depot.ecrire({ id: nouvelId(), titre: d.titre + " (copie)", html: d.html, maj: Date.now(), onglet: ONGLET }); toast("Copie créée : « " + d.titre + " (copie) »."); }catch(e){ toast("La copie n’a pas pu être créée."); }
+    return apresModifListe();
+  }
+  if(choix === "supprimer"){
+    const ok = await dialogue({ titre: "Supprimer « " + m.titre + " » ?", texte: "Ce document sera effacé de cet appareil. Cette action est définitive.",
+      boutons: [{libelle:"Supprimer définitivement", valeur:"ok", danger:true}, {libelle:"Annuler", valeur:null, primaire:true}] });
+    if(ok !== "ok") return;
+    try{ await Depot.supprimer(m.id); toast("Document supprimé."); }catch(e){ toast("Ce document n’a pas pu être supprimé."); }
+    return apresModifListe();
+  }
+}
 function ajusterMini(m){ const c = m.firstElementChild; if(c && m.clientWidth > 0) c.style.transform = `scale(${m.clientWidth/794})`; }
 const obsMinis = ("ResizeObserver" in window) ? new ResizeObserver(es=>es.forEach(e=>ajusterMini(e.target))) : null;
 function ajusterMinis(){ document.querySelectorAll(".mini").forEach(m=>{ ajusterMini(m); if(obsMinis && !m.dataset.obs){ m.dataset.obs = "1"; obsMinis.observe(m); } }); }
@@ -1054,6 +1126,26 @@ $("#b-saut").addEventListener("click", ()=>{
   const p = $("#apres-saut"); if(p){ p.removeAttribute("id"); const r = document.createRange(); r.setStart(p, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
   sauverBientot();
 });
+/* Lignes de tableau : ajout (avec numéro et calcul pour les devis) et suppression. */
+function nouvelleLigne(tr){
+  const neuve = tr.cloneNode(true);
+  const prix = !!tr.querySelector('[data-calc="qte"]');
+  const n = prix ? (parseInt(tr.cells[0].textContent) || 0) + 1 : 0;
+  [...neuve.cells].forEach((td, k)=>{ td.innerHTML = td.dataset.calc ? "0" : (prix && k === 0 ? String(n) : "<br>"); td.removeAttribute("rowspan"); });
+  tr.after(neuve); allerCase(neuve.cells[prix ? 1 : 0]); sauverBientot();
+  return neuve;
+}
+let derniereSel = null;
+document.addEventListener("selectionchange", ()=>{ const s = getSelection(); if(s.rangeCount && page.contains(s.anchorNode)) derniereSel = s.getRangeAt(0).cloneRange(); });
+const ligneCourante = () => { const c = derniereSel && derniereSel.startContainer.isConnected && caseDe(derniereSel.startContainer); return c ? c.parentElement : null; };
+$("#b-ligne-plus").addEventListener("click", ()=>{ const tr = ligneCourante(); if(!tr){ toast("Placez d’abord le curseur dans une case du tableau."); return; } page.focus(); nouvelleLigne(tr); });
+$("#b-ligne-moins").addEventListener("click", ()=>{
+  const tr = ligneCourante(); if(!tr){ toast("Placez d’abord le curseur dans une case du tableau."); return; }
+  const t = tr.closest("table");
+  if(t.rows.length <= 1){ t.remove(); } else tr.remove();
+  if(t.isConnected && t.dataset.calcul) recalculer(t);
+  sauverBientot();
+});
 /* Tableaux : Tab / Maj+Tab passent d'une case à l'autre ; Tab dans la dernière case ajoute une ligne. */
 function caseDe(n){ while(n && n !== page){ if(n.nodeType === 1 && (n.tagName === "TD" || n.tagName === "TH")) return n; n = n.parentNode; } return null; }
 function allerCase(c){
@@ -1069,6 +1161,8 @@ function tabDansTableau(arriere){
   const t = c.closest("table"), cases = [...t.querySelectorAll("td,th")].filter(x=>x.closest("table") === t);
   const i = cases.indexOf(c);
   if(arriere){ if(i > 0) allerCase(cases[i-1]); return true; }
+  const trc = c.parentElement, suiv = trc.nextElementSibling;
+  if(c.dataset.calc === "montant" && !(suiv && suiv.querySelector('[data-calc="qte"]'))){ nouvelleLigne(trc); return true; }
   if(i < cases.length - 1){ allerCase(cases[i+1]); return true; }
   // Dernière case : nouvelle ligne.
   const tr = c.parentElement, neuve = document.createElement("tr");
@@ -1125,6 +1219,12 @@ function avertirSimplification(nom, avert){
 page.addEventListener("paste", e=>{
   const dt = e.clipboardData; if(!dt) return;
   const html = dt.getData("text/html");
+  const image = [...(dt.files || [])].find(f=>/^image\//.test(f.type));
+  if(image && !html){
+    e.preventDefault();
+    lireImage(image, 1200).then(im=>insererImage(im.src, Math.min(im.largeur, 450))).catch(()=>toast("Cette image n’a pas pu être collée."));
+    return;
+  }
   if(html){
     e.preventDefault();
     const propre = CiBWord.nettoyerCollage(html);
@@ -1229,7 +1329,7 @@ function dialogue(o){
     const fermer = v=>{ document.removeEventListener("keydown", clavier, true); voile.remove(); fin(v); };
     const clavier = e=>{ if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); fermer(null); } };
     (o.boutons||[]).forEach(b=>{
-      const bt = document.createElement("button"); bt.className = "btn" + (b.primaire ? " primary" : ""); bt.textContent = b.libelle;
+      const bt = document.createElement("button"); bt.className = "btn" + (b.primaire ? " primary" : "") + (b.danger ? " danger" : ""); bt.textContent = b.libelle;
       if(b.valeur) bt.dataset.valeur = b.valeur;
       bt.addEventListener("click", ()=>fermer(b.valeur)); pied.appendChild(bt);
     });
@@ -1238,7 +1338,9 @@ function dialogue(o){
     voile.fermer = fermer;
     document.addEventListener("keydown", clavier, true);
     document.body.appendChild(voile);
-    const prim = pied.querySelector(".primary") || pied.querySelector("button"); if(prim) prim.focus();
+    if(o.large) boite.classList.add("large");
+    const prim = o.focus || pied.querySelector(".primary") || pied.querySelector("button"); if(prim){ prim.focus(); if(prim.select) prim.select(); }
+    if(o.focus) o.focus.addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); const b = pied.querySelector(".primary"); if(b) b.click(); } });
   });
 }
 
@@ -1295,12 +1397,157 @@ document.addEventListener("keydown", e=>{
   if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p" && !$("#editeur").classList.contains("hidden")){ e.preventDefault(); imprimer(); }
 });
 
+/* ---------- Mes coordonnées et papier à en-tête (A3) ---------- */
+function majResumeCoord(){
+  const r = $("#coord-resume"); if(!r) return;
+  r.textContent = aCoord()
+    ? "Vos coordonnées (" + [COORD.entreprise, COORD.nom].filter(Boolean).join(", ") + ") remplissent vos nouveaux documents" + (COORD.entete ? ", avec votre papier à en-tête." : ".")
+    : "Saisissez une fois vos coordonnées, votre logo et votre signature : ils rempliront vos documents.";
+}
+// Image choisie sur l'appareil → image réduite (taille raisonnable pour l'enregistrement et l'export).
+function lireImage(fichier, largeurMax){
+  return new Promise((ok, ko)=>{
+    if(!fichier || !/^image\//.test(fichier.type)) return ko(new Error("type"));
+    const url = URL.createObjectURL(fichier), img = new Image();
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, largeurMax / img.naturalWidth);
+      const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.naturalWidth*k)); c.height = Math.max(1, Math.round(img.naturalHeight*k));
+      const g = c.getContext("2d");
+      const png = /png|gif|webp|bmp/.test(fichier.type);
+      if(!png){ g.fillStyle = "#fff"; g.fillRect(0,0,c.width,c.height); }
+      g.drawImage(img, 0, 0, c.width, c.height);
+      ok({ src: c.toDataURL(png ? "image/png" : "image/jpeg", 0.85), largeur: c.width });
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); ko(new Error("image")); };
+    img.src = url;
+  });
+}
+function champImage(libelle, cle){
+  const lab = document.createElement("label"); lab.className = "large"; lab.textContent = libelle;
+  const zone = document.createElement("span"); zone.className = "img-champ";
+  const apercu = document.createElement("img"); apercu.alt = "";
+  const choisir = document.createElement("button"); choisir.type = "button"; choisir.className = "btn"; choisir.textContent = "Choisir une image";
+  const retirer = document.createElement("button"); retirer.type = "button"; retirer.className = "btn"; retirer.textContent = "Retirer";
+  const fic = document.createElement("input"); fic.type = "file"; fic.accept = "image/*"; fic.className = "hidden";
+  let valeur = COORD[cle] || "";
+  const maj = ()=>{ apercu.src = valeur || ""; apercu.classList.toggle("hidden", !valeur); retirer.classList.toggle("hidden", !valeur); };
+  choisir.addEventListener("click", ()=>fic.click());
+  retirer.addEventListener("click", ()=>{ valeur = ""; maj(); });
+  fic.addEventListener("change", async ()=>{ const f = fic.files[0]; fic.value = ""; try{ valeur = (await lireImage(f, 600)).src; maj(); }catch(e){ toast("Cette image n’a pas pu être lue."); } });
+  zone.append(apercu, choisir, retirer, fic);
+  if(cle === "logo"){
+    const cib = document.createElement("button"); cib.type = "button"; cib.className = "btn"; cib.textContent = "Logo CiB";
+    cib.title = "Utiliser le logo de CiB";
+    cib.addEventListener("click", async ()=>{ try{ const b = await (await fetch("img/logo-cib.png")).blob(); valeur = (await lireImage(new File([b], "logo.png", {type:"image/png"}), 600)).src; maj(); }catch(e){ toast("Le logo n’a pas pu être chargé."); } });
+    zone.appendChild(cib);
+  }
+  lab.appendChild(zone); maj();
+  lab.valeur = ()=>valeur;
+  return lab;
+}
+async function ouvrirCoordonnees(){
+  const f = document.createElement("div"); f.className = "form-coord";
+  const champs = [["nom","Nom et prénom","text"],["fonction","Fonction","text"],["entreprise","Entreprise ou organisme","text"],["mentions","RCCM, NIU, autres mentions","text"],["adresse","Adresse (BP, quartier, rue)","text"],["ville","Ville","text"],["tel","Téléphone","tel"],["email","E-mail","email"]];
+  const entrees = {};
+  champs.forEach(([cle, lib, type])=>{
+    const l = document.createElement("label"); l.textContent = lib;
+    const i = document.createElement("input"); i.type = type; i.value = COORD[cle] || ""; i.autocomplete = "off"; i.dataset.cle = cle;
+    l.appendChild(i); f.appendChild(l); entrees[cle] = i;
+  });
+  const logo = champImage("Logo (pour le papier à en-tête)", "logo"), sign = champImage("Signature scannée (et cachet)", "signature");
+  f.append(logo, sign);
+  const caseL = document.createElement("label"); caseL.className = "case large";
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = COORD.entete !== false && (!!COORD.entete || !aCoord());
+  caseL.append(cb, document.createTextNode("Ajouter mon papier à en-tête (logo et coordonnées) en haut des nouveaux documents"));
+  f.appendChild(caseL);
+  const r = await dialogue({ titre: "Mes coordonnées", texte: "Elles remplissent automatiquement les nouveaux documents (expéditeur, signature, en-tête). Elles restent sur cet appareil.", contenu: f, large: true,
+    boutons: [{libelle:"Enregistrer", valeur:"ok", primaire:true}, {libelle:"Annuler", valeur:null}], focus: entrees.nom });
+  if(r !== "ok") return false;
+  const n = {}; Object.keys(entrees).forEach(k=>{ const v = entrees[k].value.trim(); if(v) n[k] = v; });
+  if(logo.valeur()) n.logo = logo.valeur();
+  if(sign.valeur()) n.signature = sign.valeur();
+  n.entete = cb.checked;
+  COORD = n;
+  try{ await Depot.regler("coordonnees", COORD); toast("Vos coordonnées sont enregistrées."); }catch(e){ toast("Vos coordonnées n’ont pas pu être enregistrées."); }
+  majResumeCoord();
+  return true;
+}
+$("#b-coord").addEventListener("click", ouvrirCoordonnees);
+$("#b-entete").addEventListener("click", async ()=>{
+  if(!aCoord()){ if(!(await ouvrirCoordonnees()) || !aCoord()) return; }
+  if(page.querySelector("table.entete")){ toast("Ce document a déjà votre en-tête."); return; }
+  page.insertAdjacentHTML("afterbegin", htmlEntete());
+  sauverBientot(); toast("Papier à en-tête ajouté en haut du document.");
+});
+
+/* ---------- Images et signatures (A6) ---------- */
+let selImage = null;
+$("#b-image").addEventListener("mousedown", e=>{ e.preventDefault(); garderSel(); });
+$("#b-image").addEventListener("click", ()=>{ garderSel(); $("#fichier-image").click(); });
+$("#fichier-image").addEventListener("change", async e=>{
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  try{ const im = await lireImage(f, 1200); rendreSel(); insererImage(im.src, Math.min(im.largeur, 450)); }
+  catch(err){ toast("Cette image n’a pas pu être insérée. Choisissez une photo ou une image PNG/JPEG."); }
+});
+function insererImage(src, largeur){
+  page.focus();
+  document.execCommand("insertHTML", false, `<img src="${src}" alt="" style="width:${Math.round(largeur)}px">`);
+  sauverBientot();
+}
+function choisirImage(img){
+  if(selImage) selImage.classList.remove("choisie");
+  selImage = img;
+  const b = $("#barre-image");
+  if(!img){ b.classList.add("hidden"); return; }
+  img.classList.add("choisie");
+  b.classList.remove("hidden");
+  const r = img.getBoundingClientRect();
+  b.style.top = (r.bottom + scrollY + 8) + "px";
+  b.style.left = Math.max(8, Math.min(r.left + scrollX, innerWidth - b.offsetWidth - 8)) + "px";
+}
+page.addEventListener("click", e=>{ choisirImage(e.target.tagName === "IMG" ? e.target : null); });
+document.addEventListener("click", e=>{ if(selImage && !e.target.closest("#barre-image") && e.target.tagName !== "IMG") choisirImage(null); });
+$("#barre-image").addEventListener("mousedown", e=>e.preventDefault());
+$("#barre-image").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b || !selImage) return;
+  if(b.dataset.action === "suppr"){ const im = selImage; choisirImage(null); im.remove(); }
+  else { selImage.style.width = b.dataset.taille + "px"; selImage.style.height = ""; selImage.removeAttribute("width"); selImage.removeAttribute("height"); choisirImage(selImage); }
+  sauverBientot();
+});
+
+/* ---------- Devis et factures : montants et totaux calculés ---------- */
+const nombre = t => { t = String(t||"").trim(); if(/^\[.*\]$/.test(t)) return 0; const n = parseFloat(t.replace(/[\s\u00a0\u202f]/g,"").replace(",", ".")); return isFinite(n) ? n : 0; };
+const montantFr = n => Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ");
+function ecrireCase(td, texte){
+  if(!td) return; // cases calculées : non modifiables à la main (contenteditable="false")
+  const cible = td.querySelector("b") || td;
+  if(cible.textContent !== texte) cible.textContent = texte;
+}
+function recalculer(t){
+  let ht = 0;
+  t.querySelectorAll("tr").forEach(tr=>{
+    const q = tr.querySelector('[data-calc="qte"]'), pu = tr.querySelector('[data-calc="pu"]'), m = tr.querySelector('[data-calc="montant"]');
+    if(!q || !pu || !m) return;
+    const v = nombre(q.textContent) * nombre(pu.textContent);
+    ht += v; ecrireCase(m, montantFr(v));
+  });
+  const tva = Math.round(ht * 0.1925);
+  ecrireCase(t.querySelector('[data-calc="ht"]'), montantFr(ht));
+  ecrireCase(t.querySelector('[data-calc="tva"]'), montantFr(tva));
+  ecrireCase(t.querySelector('[data-calc="ttc"]'), montantFr(ht + tva));
+}
+let calculT;
+page.addEventListener("input", ()=>{ clearTimeout(calculT); calculT = setTimeout(()=>page.querySelectorAll('table[data-calcul="prix"]').forEach(recalculer), 250); });
+page.addEventListener("focusout", ()=>page.querySelectorAll('table[data-calcul="prix"]').forEach(recalculer));
+
 /* ---------- Menu « ⋯ » ---------- */
 function fermerMenu(){ $("#menu").classList.add("hidden"); $("#b-menu").setAttribute("aria-expanded","false"); }
 $("#b-menu").addEventListener("click", e=>{
   e.stopPropagation();
   const m = $("#menu"), ouvrir = m.classList.contains("hidden");
   m.classList.toggle("hidden", !ouvrir); $("#b-menu").setAttribute("aria-expanded", String(ouvrir));
+  m.querySelectorAll(".si-tableau").forEach(x=>x.classList.toggle("hidden", !ligneCourante()));
   if(ouvrir){ const b = $("#b-menu").getBoundingClientRect(); m.style.top = (b.bottom + 6) + "px"; const v = [...m.querySelectorAll("button")].find(x=>x.offsetParent); if(v) v.focus(); }
 });
 $("#menu").addEventListener("click", e=>{ const b = e.target.closest("[data-clic]"); if(!b) return; fermerMenu(); $(b.dataset.clic).click(); });
@@ -1379,6 +1626,8 @@ if("serviceWorker" in navigator && !window.Capacitor && (location.protocol === "
 window.EditeurCiB = { depot: ()=>Depot, sauver, onglet: ONGLET };
 montrer("accueil");
 CiBStockage.ouvrir().then(d=>{ Depot = d; }, ()=>{ Depot = CiBStockage._depotMemoire(); }).then(async ()=>{
+  try{ COORD = (await Depot.reglage("coordonnees", {})) || {}; }catch(e){ COORD = {}; }
+  majResumeCoord();
   if($("#editeur").classList.contains("hidden")) await rendreAccueil(); else if(courant) sauver();
   document.documentElement.dataset.pret = "1";
 });
