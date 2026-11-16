@@ -1,0 +1,16 @@
+{
+  "name": "EditeurCiB",
+  "short_name": "EditeurCiB",
+  "description": "Le traitement de texte de CiB : modèles de courriers, suggestions de mots et export Word. Créé par Mathias Pascal Ikeng.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E3E7EE",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

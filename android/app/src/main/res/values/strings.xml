@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EditeurCiB</string>
+    <string name="title_activity_main">EditeurCiB</string>
+    <string name="package_name">com.cib.editeurcib</string>
+    <string name="custom_url_scheme">com.cib.editeurcib</string>
+</resources>

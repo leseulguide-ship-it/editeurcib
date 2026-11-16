@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EditeurCiB, traitement de texte</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="description" content="EditeurCiB, le traitement de texte de CiB. Créé par Mathias Pascal Ikeng.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EditeurCiB">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="stylesheet" href="fonts/polices.css">
+<script src="lib/jszip.min.js"></script>
+<script src="lib/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --desk:#E3E7EE; --bar:#FFFFFF; --ink:#1B2A4A; --ink-soft:#56627C; --line:#CBD2DE;
+  --accent:#007296; --accent-ink:#FFFFFF; --accent-soft:#D9EEF5; --hover:#EEF1F6; --brand:#E16326;
+  --paper:#FFFFFF; --paper-ink:#1D1F24; --champ:#FCEFC4; --champ-line:#E2C46A;
+  --shadow:0 1px 2px rgba(27,42,74,.10), 0 8px 24px rgba(27,42,74,.10);
+  --ui:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk:#141A25; --bar:#1D2433; --ink:#E5E9F1; --ink-soft:#98A3B8; --line:#2F394B;
+    --accent:#4DB6DA; --accent-ink:#06222C; --accent-soft:#16343F; --hover:#273043; --brand:#F07A40;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#141A25; --bar:#1D2433; --ink:#E5E9F1; --ink-soft:#98A3B8; --line:#2F394B;
+  --accent:#4DB6DA; --accent-ink:#06222C; --accent-soft:#16343F; --hover:#273043; --brand:#F07A40;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--desk);color:var(--ink);font-family:var(--ui);font-size:15px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bar)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hidden{display:none !important}
+
+/* En-tête */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bar);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;background:none;border:0;padding:4px 6px;border-radius:8px;color:var(--ink)}
+.logo:hover{background:var(--hover)}
+.logo img{width:30px;height:30px;border-radius:7px;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.logo em{font-style:normal;color:var(--brand)}
+#titre{flex:1 1 180px;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 10px;font-weight:600;font-size:15px}
+#titre:hover,#titre:focus{border-color:var(--line);background:var(--desk);outline:none}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--bar);border-radius:8px;padding:7px 12px;font-weight:500;font-size:14px;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Barre d’outils */
+.outils{display:flex;align-items:center;gap:4px;padding:6px 12px;border-top:1px solid var(--line);overflow-x:auto;scrollbar-width:thin}
+.groupe{display:flex;align-items:center;gap:2px;padding-right:8px;margin-right:4px;border-right:1px solid var(--line);flex:none}
+.groupe:last-child{border-right:0}
+.ob{width:34px;height:34px;display:grid;place-items:center;border:0;background:none;border-radius:7px;font-size:15px;color:var(--ink)}
+.ob:hover{background:var(--hover)}
+.ob.on{background:var(--accent-soft);color:var(--accent)}
+.ob svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.outils select{height:34px;border:1px solid var(--line);background:var(--bar);border-radius:7px;padding:0 6px;font-size:14px}
+.couleur{position:relative;width:34px;height:34px;display:grid;place-items:center;border-radius:7px}
+.couleur:hover{background:var(--hover)}
+.couleur input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.couleur span{font-weight:700;border-bottom:3px solid #C0392B;line-height:1.1}
+.ia{display:flex;gap:6px;align-items:center;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:7px;height:34px;padding:0 10px;font-weight:600;font-size:14px;white-space:nowrap}
+.ia:hover{background:var(--accent-soft)}
+
+/* Accueil */
+#accueil{max-width:1080px;margin:0 auto;padding:40px 20px 60px}
+#accueil h1{font-size:clamp(26px,4vw,36px);font-weight:700;letter-spacing:-.01em;margin:0 0 6px}
+.sous{color:var(--ink-soft);margin:0 0 28px;max-width:60ch;line-height:1.5}
+.modeles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(150px,42vw),1fr));gap:22px 16px}
+.modele{background:none;border:0;padding:0;text-align:left;display:flex;flex-direction:column;gap:9px}
+.mini{width:100%;aspect-ratio:210/297;background:var(--paper);border-radius:3px;box-shadow:var(--shadow);overflow:hidden;position:relative;transition:transform .18s ease}
+.modele:hover .mini,.modele:focus-visible .mini{transform:translateY(-3px)}
+.mini-contenu{position:absolute;top:0;left:0;width:794px;transform-origin:top left;pointer-events:none}
+.modele b{font-weight:600;font-size:15px}
+.modele small{color:var(--ink-soft);font-size:13px;line-height:1.4;margin-top:-5px}
+.docs-titre{font-size:19px;font-weight:600;margin:48px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.liste{background:var(--bar);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ligne{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
+.ligne:first-child{border-top:0}
+.ligne .nom{flex:1;min-width:0;background:none;border:0;text-align:left;font-weight:500;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ligne .nom:hover{color:var(--accent)}
+.ligne time{color:var(--ink-soft);font-size:13px;white-space:nowrap}
+.suppr{border:0;background:none;color:var(--ink-soft);font-size:13px;padding:4px 8px;border-radius:6px}
+.suppr:hover{background:var(--hover);color:#C0392B}
+.suppr.confirmer{color:#C0392B;font-weight:600}
+.vide{padding:20px 16px;color:var(--ink-soft)}
+
+/* Marque CiB */
+.marque{display:flex;align-items:center;gap:14px;margin:0 0 28px}
+.marque img{width:64px;height:64px;border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+.marque strong{display:block;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.marque em,.boite h2 em{font-style:normal;color:var(--brand)}
+.marque span{color:var(--ink-soft);font-size:14px}
+#accueil h1::after{content:"";display:block;width:56px;height:4px;border-radius:2px;background:var(--brand);margin-top:10px}
+.credit{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;color:var(--ink-soft);font-size:14px}
+.credit strong{color:var(--ink);font-weight:600}
+.lien{background:none;border:0;color:var(--accent);font-weight:600;padding:4px 0}
+.voile{position:fixed;inset:0;z-index:40;background:rgba(10,16,28,.55);display:grid;place-items:center;padding:20px}
+.boite{background:var(--bar);color:var(--ink);border-radius:16px;max-width:380px;width:100%;padding:28px 24px;text-align:center;box-shadow:var(--shadow)}
+.boite img{border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.boite h2{margin:14px 0 2px;font-size:24px}
+.boite .version{margin:0 0 14px;color:var(--ink-soft);font-size:13px}
+.boite p{line-height:1.5;font-size:14.5px}
+.boite .auteur{margin:16px 0 20px;padding-top:14px;border-top:1px solid var(--line)}
+
+.installer{display:flex;align-items:center;gap:12px;background:var(--bar);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 12px 12px 14px;margin:0 0 26px}
+.installer img{border-radius:9px;flex:none;box-shadow:0 0 0 1px var(--line)}
+.installer p{margin:0;flex:1;font-size:14px;line-height:1.45}
+/* Éditeur */
+#editeur{padding:28px 12px 80px}
+#page{width:min(794px,100%);min-height:1123px;margin:0 auto;background:var(--paper);color:var(--paper-ink);box-shadow:var(--shadow);border-radius:2px;
+  padding:clamp(24px,9vw,95px) clamp(20px,9vw,95px);font-family:"Times New Roman",Tinos,serif;font-size:12pt;line-height:1.45;outline:none;caret-color:#007296;color-scheme:light}
+#page p{margin:0 0 .45em}
+#page h1{font-size:18pt;margin:.4em 0 .5em;line-height:1.2}
+#page h2{font-size:15pt;margin:.6em 0 .4em;line-height:1.25}
+#page h3{font-size:13pt;margin:.6em 0 .3em}
+#page table{border-collapse:collapse;width:100%;margin:.5em 0}
+#page td,#page th{border:1px solid #9AA3B2;padding:5px 8px;vertical-align:top;min-width:40px}
+#page ul,#page ol{margin:0 0 .5em;padding-left:1.6em}
+#page img{max-width:100%}
+.champ{background:var(--champ);border-bottom:1px dashed var(--champ-line);border-radius:2px;padding:0 1px;color:#5A4A12}
+.mini-contenu .champ{color:#5A4A12}
+.mini-contenu{font-family:"Times New Roman",Tinos,serif;font-size:12pt;line-height:1.45;color:#1D1F24;padding:95px}
+.mini-contenu p{margin:0 0 .45em}
+.mini-contenu h1{font-size:18pt;margin:.4em 0 .5em}
+
+/* Suggestions */
+#popup{position:fixed;z-index:20;min-width:200px;max-width:min(440px,92vw);background:var(--bar);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;font-size:14px}
+#popup .item{display:flex;gap:10px;align-items:baseline;width:100%;border:0;background:none;text-align:left;padding:8px 12px;color:var(--ink)}
+#popup .item.sel{background:var(--accent-soft)}
+#popup .item .t{flex:1;min-width:0}
+#popup .item .k{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+#popup .item.phrase .t{font-style:italic}
+#popup .pied{padding:6px 12px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line)}
+
+/* Barre d’état */
+#etat{position:fixed;left:0;right:0;bottom:0;z-index:4;background:var(--bar);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;justify-content:space-between;padding:6px 16px calc(6px + env(safe-area-inset-bottom,0px));font-size:13px;color:var(--ink-soft)}
+.bascule{display:flex;align-items:center;gap:8px;background:none;border:0;padding:2px 4px;color:var(--ink-soft);font-size:13px}
+.bascule i{width:30px;height:17px;border-radius:9px;background:var(--line);position:relative;transition:background .15s}
+.bascule i::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left .15s}
+.bascule[aria-pressed="true"] i{background:var(--accent)}
+.bascule[aria-pressed="true"] i::after{left:15px}
+#toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%);background:var(--ink);color:var(--bar);padding:9px 16px;border-radius:8px;font-size:14px;z-index:30;max-width:90vw}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+@media (max-width:600px){
+  .top{padding:8px 10px}
+  .actions .btn{padding:6px 9px;font-size:13px}
+  #editeur{padding:14px 6px 80px}
+  #page{min-height:70vh}
+  .k-desk{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <button class="logo" id="vers-accueil" title="Accueil"><img src="img/logo-cib.png" alt="" width="30" height="30"><span>Editeur<em>CiB</em></span></button>
+    <input id="titre" class="hidden" aria-label="Titre du document" placeholder="Document sans titre">
+    <div class="actions">
+      <button class="btn" id="b-ouvrir">Ouvrir un fichier</button>
+      <button class="btn hidden" id="b-html">Exporter .html</button>
+      <button class="btn primary hidden" id="b-docx">Exporter .docx</button>
+    </div>
+    <input type="file" id="fichier" accept=".docx,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" class="hidden">
+  </div>
+  <div class="outils hidden" id="outils">
+    <div class="groupe">
+      <button class="ob" data-cmd="undo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+      <button class="ob" data-cmd="redo" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+    </div>
+    <div class="groupe">
+      <select id="style" title="Style de paragraphe">
+        <option value="p">Normal</option><option value="h1">Titre 1</option><option value="h2">Titre 2</option><option value="h3">Titre 3</option>
+      </select>
+      <select id="police" title="Police">
+        <option value="'Times New Roman', Tinos, serif">Times New Roman</option>
+        <option value="Arial, Arimo, sans-serif">Arial</option>
+        <option value="'Courier New', Cousine, monospace">Courier New</option>
+      </select>
+      <select id="taille" title="Taille">
+        <option>8</option><option>9</option><option>10</option><option>11</option><option selected>12</option><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option><option>28</option><option>36</option>
+      </select>
+    </div>
+    <div class="groupe">
+      <button class="ob" data-cmd="bold" title="Gras (Ctrl+B)"><b>G</b></button>
+      <button class="ob" data-cmd="italic" title="Italique (Ctrl+I)"><i style="font-family:Tinos,serif">I</i></button>
+      <button class="ob" data-cmd="underline" title="Souligné (Ctrl+U)"><u>S</u></button>
+      <label class="couleur" title="Couleur du texte"><span>A</span><input type="color" id="couleur" value="#C0392B"></label>
+    </div>
+    <div class="groupe">
+      <button class="ob" data-cmd="justifyLeft" title="Aligner à gauche"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
+      <button class="ob" data-cmd="justifyCenter" title="Centrer"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
+      <button class="ob" data-cmd="justifyRight" title="Aligner à droite"><svg viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button>
+      <button class="ob" data-cmd="justifyFull" title="Justifier"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></button>
+    </div>
+    <div class="groupe">
+      <button class="ob" data-cmd="insertUnorderedList" title="Liste à puces"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
+      <button class="ob" data-cmd="insertOrderedList" title="Liste numérotée"><svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 5l1.5-1v5M3.5 13.5c.5-1 2.5-1 2.5.3 0 1-2.5 2.2-2.5 3.2H6"/></svg></button>
+      <button class="ob" id="b-tableau" title="Insérer un tableau 3 × 3"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 15h16M9.5 5v14M14.5 5v14"/></svg></button>
+    </div>
+    <div class="groupe">
+      <button class="ia hidden" id="b-ia" title="Proposer la suite de la phrase (Ctrl+Espace)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>
+        Continuer la phrase
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="accueil">
+  <div class="marque"><img src="img/logo-cib.png" alt="Logo CiB" width="64" height="64"><div><strong>Editeur<em>CiB</em></strong><span>Le traitement de texte de CiB</span></div></div>
+  <div id="installer" class="installer hidden">
+    <img src="img/apple-touch-icon.png" alt="" width="40" height="40">
+    <p id="installer-texte"></p>
+    <button class="btn primary hidden" id="b-installer">Installer</button>
+    <button class="suppr" id="b-installer-fermer" aria-label="Fermer">✕</button>
+  </div>
+  <h1>Que voulez-vous écrire ?</h1>
+  <p class="sous">Choisissez un type de texte : la mise en page est prête, il ne reste qu’à remplir les champs surlignés. Touchez un champ pour le remplacer, ou utilisez Tab pour passer au suivant.</p>
+  <div class="modeles" id="modeles"></div>
+  <div class="docs-titre"><span>Vos documents</span></div>
+  <div class="liste" id="liste"></div>
+  <footer class="credit">
+    <span>EditeurCiB · Créé par <strong>Mathias Pascal Ikeng</strong></span>
+    <button class="lien" id="b-apropos">À propos</button>
+  </footer>
+</main>
+
+<div id="apropos" class="voile hidden" role="dialog" aria-modal="true" aria-labelledby="apropos-titre">
+  <div class="boite">
+    <img src="img/logo-cib.png" alt="Logo CiB" width="96" height="96">
+    <h2 id="apropos-titre">Editeur<em>CiB</em></h2>
+    <p class="version">Version 1.0</p>
+    <p>Traitement de texte en français : modèles de courriers prêts à remplir, suggestions de mots pendant la frappe, ouverture et export de fichiers Word (.docx). Fonctionne sans connexion Internet.</p>
+    <p class="auteur">Créé par <strong>Mathias Pascal Ikeng</strong><br>pour CiB</p>
+    <button class="btn primary" id="b-fermer">Fermer</button>
+  </div>
+</div>
+
+<main id="editeur" class="hidden">
+  <div id="page" contenteditable="true" spellcheck="true" lang="fr"></div>
+</main>
+
+<div id="etat" class="hidden">
+  <span id="compte">0 mot</span>
+  <span id="enreg">Enregistré sur cet appareil</span>
+  <button class="bascule" id="b-sugg" aria-pressed="true"><i></i>Suggestions</button>
+</div>
+
+<div id="popup" class="hidden" role="listbox"></div>
+<div id="toast" class="hidden" role="status"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Petits utilitaires ---------- */
+const $ = s => document.querySelector(s);
+const page = $("#page");
+const dateFr = () => new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+const champ = t => `<span class="champ">[${t}]</span>`;
+const sansAccent = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function lire(cle, defaut){ try{ const v = localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; }catch(e){ return defaut; } }
+function ecrire(cle, val){ try{ localStorage.setItem(cle, JSON.stringify(val)); return true; }catch(e){ return false; } }
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.add("hidden"),3200); }
+
+/* ---------- Modèles ---------- */
+const droite = h => `<p style="text-align:right">${h}</p>`;
+const expediteur = `<p>${champ("Prénom NOM")}</p><p>${champ("Adresse")}</p><p>${champ("Ville")}</p><p>${champ("Téléphone")} – ${champ("adresse e-mail")}</p><p><br></p>`;
+const destinataire = `${droite(champ("Nom ou fonction du destinataire"))}${droite(champ("Organisme"))}${droite(champ("Adresse"))}${droite(champ("Ville"))}<p><br></p>`;
+const lieuDate = () => droite(`Fait à ${champ("Ville")}, le ${dateFr()}`) + "<p><br></p>";
+const signature = `<p><br></p>${droite(champ("Prénom NOM"))}${droite(champ("Signature"))}`;
+
+const MODELES = [
+  { id:"vierge", nom:"Page vierge", desc:"Commencez de zéro.", titre:"Document sans titre", html:()=>"<p><br></p>" },
+  { id:"demande", nom:"Lettre de demande", desc:"Solliciter un document, une autorisation, un service.", titre:"Lettre de demande",
+    html:()=> expediteur + destinataire + lieuDate() +
+      `<p><b>Objet : demande de ${champ("objet de la demande")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
+      `<p style="text-align:justify">J’ai l’honneur de solliciter de votre haute bienveillance ${champ("décrivez précisément votre demande")}.</p>` +
+      `<p style="text-align:justify">En effet, ${champ("exposez le contexte et les raisons de votre demande")}.</p>` +
+      `<p style="text-align:justify">Vous trouverez ci-joint les pièces justificatives nécessaires. Je reste à votre disposition pour tout renseignement complémentaire.</p>` +
+      `<p style="text-align:justify">Dans l’attente d’une suite favorable, je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
+  { id:"reclamation", nom:"Lettre de réclamation", desc:"Contester une facture, signaler un problème.", titre:"Lettre de réclamation",
+    html:()=> expediteur + destinataire + lieuDate() +
+      `<p><b>Objet : réclamation concernant ${champ("objet de la réclamation")}</b></p><p>Référence : ${champ("numéro de dossier, de facture ou de client")}</p><p><br></p><p>Madame, Monsieur,</p>` +
+      `<p style="text-align:justify">Le ${champ("date")}, ${champ("décrivez les faits : achat, service, incident")}.</p>` +
+      `<p style="text-align:justify">Or, ${champ("expliquez le problème constaté")}. Cette situation me cause un préjudice, car ${champ("conséquences pour vous")}.</p>` +
+      `<p style="text-align:justify">Je vous demande donc de bien vouloir ${champ("ce que vous attendez : remboursement, réparation, correction")}. Sans réponse de votre part dans un délai de ${champ("quinze")} jours, je me verrai contraint(e) d’engager les démarches nécessaires.</p>` +
+      `<p style="text-align:justify">Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
+  { id:"attestation", nom:"Attestation sur l’honneur", desc:"Certifier une situation ou un fait.", titre:"Attestation sur l’honneur",
+    html:()=> `<p><br></p><h1 style="text-align:center">Attestation sur l’honneur</h1><p><br></p>` +
+      `<p style="text-align:justify">Je soussigné(e) ${champ("Prénom NOM")}, né(e) le ${champ("date de naissance")} à ${champ("lieu de naissance")}, demeurant à ${champ("adresse")}, titulaire de la pièce d’identité n° ${champ("numéro")},</p>` +
+      `<p style="text-align:justify">atteste sur l’honneur que ${champ("énoncez le fait que vous certifiez")}.</p><p><br></p>` +
+      `<p style="text-align:justify">Je suis informé(e) que toute fausse déclaration m’expose à des poursuites.</p>` +
+      `<p style="text-align:justify">Fait pour servir et valoir ce que de droit.</p><p><br></p>` + lieuDate() + signature },
+  { id:"motivation", nom:"Lettre de motivation", desc:"Accompagner une candidature à un emploi ou un stage.", titre:"Lettre de motivation",
+    html:()=> expediteur + destinataire + lieuDate() +
+      `<p><b>Objet : candidature au poste de ${champ("intitulé du poste")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
+      `<p style="text-align:justify">Votre annonce parue ${champ("où et quand")} a retenu toute mon attention. ${champ("Ce qui vous attire dans l’entreprise")}.</p>` +
+      `<p style="text-align:justify">Titulaire d’un ${champ("diplôme")}, j’ai acquis une expérience en ${champ("domaine")} au cours de ${champ("expériences principales")}. J’y ai développé ${champ("compétences clés")}.</p>` +
+      `<p style="text-align:justify">Rejoindre votre équipe me permettrait de ${champ("ce que vous apporterez")}.</p>` +
+      `<p style="text-align:justify">Je me tiens à votre disposition pour un entretien à votre convenance. Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.</p>` + signature },
+  { id:"conge", nom:"Demande de congé", desc:"Demander un congé ou une permission d’absence.", titre:"Demande de congé",
+    html:()=> expediteur + destinataire + lieuDate() +
+      `<p><b>Objet : demande de ${champ("congé annuel / permission d’absence")}</b></p><p><br></p><p>Madame, Monsieur,</p>` +
+      `<p style="text-align:justify">J’ai l’honneur de solliciter un ${champ("type de congé")} du ${champ("date de début")} au ${champ("date de fin")} inclus, soit ${champ("nombre")} jours.</p>` +
+      `<p style="text-align:justify">Cette demande est motivée par ${champ("motif")}. J’ai pris soin d’organiser la continuité de mes tâches avec ${champ("collègue")}.</p>` +
+      `<p style="text-align:justify">Je vous remercie par avance de l’attention que vous porterez à ma demande et vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations respectueuses.</p>` + signature },
+  { id:"explication", nom:"Demande d’explication", desc:"Demander par écrit des explications sur des faits.", titre:"Demande d’explication",
+    html:()=> `<p>${champ("Nom de l’organisme")}</p><p>${champ("Service")}</p><p><br></p>` + droite(`À ${champ("Prénom NOM, fonction")}`) + "<p><br></p>" + lieuDate() +
+      `<p><b>Objet : demande d’explication</b></p><p><br></p><p>${champ("Madame / Monsieur")},</p>` +
+      `<p style="text-align:justify">Il m’a été rapporté que le ${champ("date")}, ${champ("décrivez les faits de manière précise et neutre")}.</p>` +
+      `<p style="text-align:justify">Ces faits constituent ${champ("manquement constaté")}. Je vous demande de bien vouloir me fournir, par écrit et dans un délai de ${champ("48 heures")}, toutes les explications utiles sur ces faits.</p>` +
+      `<p style="text-align:justify">Veuillez agréer, ${champ("Madame / Monsieur")}, l’expression de mes salutations distinguées.</p>` + signature }
+];
+
+/* ---------- Documents enregistrés ---------- */
+let docs = lire("cib:docs", {});
+let courant = null;
+function sauver(){
+  if(!courant) return;
+  docs[courant] = { titre: ($("#titre").value.trim() || "Document sans titre"), html: page.innerHTML, maj: Date.now() };
+  $("#enreg").textContent = ecrire("cib:docs", docs) ? "Enregistré sur cet appareil" : "Enregistrement local indisponible";
+}
+let sauverT;
+function sauverBientot(){ $("#enreg").textContent = "Modifications…"; clearTimeout(sauverT); sauverT = setTimeout(sauver, 1200); }
+
+function ouvrirDoc(id, titre, html){
+  courant = id;
+  $("#titre").value = titre;
+  page.innerHTML = html;
+  montrer("editeur");
+  sauver(); compter();
+  const premier = page.querySelector(".champ");
+  page.focus();
+  if(premier) selectionnerChamp(premier); else placerFin();
+}
+function nouveauDepuis(m){ ouvrirDoc("d"+Date.now(), m.titre, m.html()); }
+
+function montrer(vue){
+  const ed = vue === "editeur";
+  $("#accueil").classList.toggle("hidden", ed);
+  $("#editeur").classList.toggle("hidden", !ed);
+  $("#outils").classList.toggle("hidden", !ed);
+  $("#etat").classList.toggle("hidden", !ed);
+  $("#titre").classList.toggle("hidden", !ed);
+  $("#b-docx").classList.toggle("hidden", !ed);
+  $("#b-html").classList.toggle("hidden", !ed);
+  cacherPopup();
+  if(!ed){ rendreAccueil(); window.scrollTo(0,0); }
+}
+
+function rendreAccueil(){
+  const grille = $("#modeles");
+  if(!grille.children.length){
+    MODELES.forEach(m=>{
+      const b = document.createElement("button");
+      b.className = "modele";
+      b.innerHTML = `<div class="mini"><div class="mini-contenu">${m.html()}</div></div><b>${m.nom}</b><small>${m.desc}</small>`;
+      b.addEventListener("click", ()=>nouveauDepuis(m));
+      grille.appendChild(b);
+    });
+    ajusterMinis();
+  }
+  const liste = $("#liste");
+  const ids = Object.keys(docs).sort((a,b)=>docs[b].maj-docs[a].maj);
+  liste.innerHTML = "";
+  if(!ids.length){ liste.innerHTML = `<div class="vide">Aucun document pour l’instant. Choisissez un modèle ci-dessus pour commencer.</div>`; return; }
+  ids.forEach(id=>{
+    const d = docs[id];
+    const l = document.createElement("div"); l.className = "ligne";
+    const nom = document.createElement("button"); nom.className="nom"; nom.textContent = d.titre;
+    nom.addEventListener("click", ()=>ouvrirDoc(id, d.titre, d.html));
+    const t = document.createElement("time");
+    t.textContent = new Date(d.maj).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    const s = document.createElement("button"); s.className="suppr"; s.textContent="Supprimer";
+    s.addEventListener("click", ()=>{
+      if(!s.classList.contains("confirmer")){ s.classList.add("confirmer"); s.textContent="Confirmer"; setTimeout(()=>{s.classList.remove("confirmer"); s.textContent="Supprimer";},3000); return; }
+      delete docs[id]; ecrire("cib:docs", docs); rendreAccueil();
+    });
+    l.append(nom,t,s); liste.appendChild(l);
+  });
+}
+function ajusterMinis(){
+  document.querySelectorAll(".mini").forEach(m=>{ const c=m.firstElementChild; if(c) c.style.transform=`scale(${m.clientWidth/794})`; });
+}
+window.addEventListener("resize", ajusterMinis);
+
+/* ---------- Champs à remplir ---------- */
+function selectionnerChamp(el){
+  const r = document.createRange(); r.selectNodeContents(el);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  el.scrollIntoView({block:"nearest", behavior:"smooth"});
+}
+function placerFin(){
+  const r = document.createRange(); r.selectNodeContents(page); r.collapse(false);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function champSuivant(){
+  const s = getSelection(); if(!s.rangeCount) return false;
+  const pos = s.getRangeAt(0);
+  const champs = [...page.querySelectorAll(".champ")];
+  const suivant = champs.find(c=>{ const r=document.createRange(); r.selectNodeContents(c); return r.compareBoundaryPoints(Range.START_TO_END, pos) > 0 && !c.contains(pos.startContainer); }) || champs[0];
+  if(suivant){ selectionnerChamp(suivant); return true; }
+  return false;
+}
+function nettoyerChamps(){
+  page.querySelectorAll(".champ").forEach(c=>{
+    const t = c.textContent;
+    if(!t){ c.remove(); return; }
+    if(!/^\[[^\]]*\]$/.test(t)) c.classList.remove("champ");
+  });
+  page.querySelectorAll("span:not([class]):not([style])").forEach(sp=>{ sp.replaceWith(...sp.childNodes); });
+}
+page.addEventListener("click", e=>{
+  const c = e.target.closest && e.target.closest(".champ");
+  if(c && getSelection().isCollapsed) selectionnerChamp(c);
+});
+
+/* ---------- Dictionnaire et apprentissage ---------- */
+const MOTS = ("de la le et les des en un une du que qui à au aux est pour dans par sur avec ne pas plus ce cette ces se sa son ses il elle ils elles nous vous je tu on mon ma mes votre vos notre nos leur leurs mais ou donc or ni car comme tout tous toute toutes être avoir faire dire aller voir savoir pouvoir vouloir venir devoir prendre trouver donner mettre parler passer demander tenir sembler laisser rester penser entendre croire connaître rendre vivre suivre comprendre attendre sortir écrire recevoir répondre remercier solliciter souhaiter envoyer présenter permettre obtenir expliquer informer confirmer accepter refuser proposer préciser concerner contacter rencontrer travailler payer rembourser commander livrer réparer remplacer annuler signaler constater adresser joindre transmettre vérifier prévoir organiser assurer engager agréer prier croire veuillez bien très aussi déjà encore toujours jamais ici après avant depuis pendant entre sans sous selon chez contre vers afin lorsque quand puisque ainsi alors enfin ensuite également notamment cependant toutefois néanmoins pourtant actuellement rapidement précisément respectueusement sincèrement vivement personnellement immédiatement prochainement madame monsieur mesdames messieurs mademoiselle docteur directeur directrice président présidente responsable chef service ressources humaines administration ministère mairie préfecture délégué délégation département région commune université école lycée collège établissement entreprise société agence banque assurance hôpital tribunal cabinet bureau poste demande lettre courrier objet référence dossier numéro date jour jours mois année semaine heure heures délai réponse décision attestation certificat document documents pièce pièces justificatif justificatifs copie original formulaire contrat facture paiement montant somme francs euros prix compte commande livraison produit article marché travail emploi poste stage candidature expérience compétences formation diplôme licence master baccalauréat études université parcours profil entretien recrutement salaire congé congés absence permission maladie mission retard problème situation raison raisons motif motifs cause conséquence préjudice réclamation plainte remboursement réparation remplacement erreur retard dysfonctionnement panne compréhension bienveillance considération attention disposition renseignement renseignements complémentaire complémentaires information informations suite favorable rapide urgent urgente important importante nécessaire nécessaires possible impossible personnel personnelle professionnel professionnelle administratif administrative officiel officielle actuel actuelle prochain prochaine dernier dernière premier première nouveau nouvelle grand grande petit petite bon bonne meilleur meilleure haute haut profond profonde respectueux respectueuses respectueuse distinguées distingué salutations sentiments expression honneur assurance gratitude remerciements reconnaissance sincères cordiales cordialement merci avance pouvez pourriez voudriez souhaiterais aimerais voudrais pourrais serais serait aurais aurait suis êtes sommes sont était étais avons avez ont fait faits faite dit vu reçu reçue envoyé envoyée effectué effectuée constaté constatée adressé adressée demandé demandée obtenu prévu prévue informé informée joint jointe ci-joint ci-jointe ci-dessous ci-dessus présente présent présents présentes soussigné soussignée certifie atteste déclare servir valoir droit concerne concernant relatif relative relatifs suivant suivante suivants conformément vertu cadre titre égard regard vue fin moment période ville pays famille enfant enfants parents mère père frère sœur mari épouse domicile adresse téléphone mail courriel identité naissance né née nationalité camerounaise camerounais français française cameroun douala yaoundé afrique projet rapport réunion compte-rendu procès-verbal ordre point points proposition propositions solution solutions mesure mesures action actions besoin besoins objectif objectifs résultat résultats équipe collègue collègues client clients partenaire partenaires fournisseur fournisseurs autorité autorités supérieur hiérarchique direction générale générale général technique financier financière commercial commerciale juridique social sociale public publique privé privée ").trim().split(/\s+/);
+const BASE = new Map(); MOTS.forEach((m,i)=>{ if(!BASE.has(m)) BASE.set(m, i); });
+
+const PHRASES = [
+  "Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.",
+  "Veuillez agréer, Madame, Monsieur, l’expression de mes sentiments respectueux.",
+  "Dans l’attente d’une suite favorable, je vous prie d’agréer, Madame, Monsieur, l’expression de ma haute considération.",
+  "Dans l’attente de votre réponse, je vous prie de croire, Madame, Monsieur, en l’assurance de ma considération distinguée.",
+  "Je vous remercie par avance de l’attention que vous porterez à ma demande.",
+  "Je reste à votre disposition pour tout renseignement complémentaire.",
+  "Je me tiens à votre disposition pour un entretien à votre convenance.",
+  "J’ai l’honneur de solliciter de votre haute bienveillance ",
+  "J’ai l’honneur de venir très respectueusement auprès de votre haute personnalité solliciter ",
+  "Fait pour servir et valoir ce que de droit.",
+  "Vous trouverez ci-joint les pièces justificatives nécessaires.",
+  "Veuillez trouver ci-joint ",
+  "Comptant sur votre compréhension, ",
+  "Sans réponse de votre part dans un délai de ",
+  "Suite à notre entretien téléphonique du ",
+  "Par la présente, je ",
+  "Je soussigné(e) "
+];
+const normPh = s => s.toLowerCase().replace(/’/g,"'");
+const PHRASES_N = PHRASES.map(normPh);
+
+let appris = lire("cib:appris", {f:{}, b:{}});
+const tokens = s => (s.toLowerCase().replace(/’/g,"'").match(/[\p{L}-]+/gu) || []);
+function apprendreTexte(t, poids){
+  const ws = tokens(t);
+  for(let i=0;i<ws.length;i++){
+    const w = ws[i]; if(w.length<2) continue;
+    appris.f[w] = (appris.f[w]||0) + poids;
+    if(i>0){ const k = ws[i-1]+" "+w; appris.b[k] = (appris.b[k]||0) + poids; }
+  }
+}
+// Graines : les modèles et les formules apprennent au programme les tournures des lettres.
+const GRAINES = {f:{}, b:{}};
+(function(){
+  const sauvegarde = appris; appris = GRAINES;
+  const tmp = document.createElement("div");
+  MODELES.forEach(m=>{ tmp.innerHTML = m.html(); apprendreTexte(tmp.textContent.replace(/\[[^\]]*\]/g," "), 1); });
+  PHRASES.forEach(p=>apprendreTexte(p, 1));
+  appris = sauvegarde;
+})();
+let apprisT;
+function apprendreMot(prev, w){
+  if(!w || w.length<2) return;
+  appris.f[w] = (appris.f[w]||0)+1;
+  if(prev){ const k = prev+" "+w; appris.b[k] = (appris.b[k]||0)+1; }
+  clearTimeout(apprisT);
+  apprisT = setTimeout(()=>{
+    const fk = Object.keys(appris.f); if(fk.length>8000) fk.sort((a,b)=>appris.f[a]-appris.f[b]).slice(0,2000).forEach(k=>delete appris.f[k]);
+    const bk = Object.keys(appris.b); if(bk.length>15000) bk.sort((a,b)=>appris.b[a]-appris.b[b]).slice(0,4000).forEach(k=>delete appris.b[k]);
+    ecrire("cib:appris", appris);
+  }, 1500);
+}
+const freq = w => (appris.f[w]||0)*3 + (GRAINES.f[w]||0);
+const bigr = (p,w) => (appris.b[p+" "+w]||0)*3 + (GRAINES.b[p+" "+w]||0);
+function score(w, prev){
+  const r = BASE.has(w) ? BASE.get(w) : 2000;
+  return 40/(r+20) + freq(w)*0.6 + (prev ? bigr(prev,w)*4 : 0);
+}
+function tousLesMots(){
+  const s = new Set(BASE.keys());
+  Object.keys(appris.f).forEach(w=>s.add(w));
+  Object.keys(GRAINES.f).forEach(w=>s.add(w));
+  return s;
+}
+
+/* ---------- Lecture du curseur ---------- */
+function blocDe(n){
+  while(n && n !== page){ if(n.nodeType===1 && /^(P|H1|H2|H3|LI|TD|TH|DIV)$/.test(n.tagName)) return n; n = n.parentNode; }
+  return page;
+}
+function infoCurseur(){
+  const s = getSelection();
+  if(!s.rangeCount || !s.isCollapsed || !page.contains(s.anchorNode)) return null;
+  const r = s.getRangeAt(0);
+  const bloc = blocDe(r.startContainer);
+  const av = document.createRange(); av.setStart(bloc,0); av.setEnd(r.startContainer, r.startOffset);
+  const avant = av.toString();
+  const m = avant.match(/[\p{L}-]+$/u);
+  let prefixe = m ? m[0] : "";
+  const node = r.startContainer, off = r.startOffset;
+  if(prefixe && (node.nodeType!==3 || !node.data.slice(0,off).endsWith(prefixe))) prefixe = "";
+  const mots = tokens(avant.slice(0, avant.length - (m?m[0].length:0)));
+  return { r, node, off, avant, prefixe, prev: mots.length ? mots[mots.length-1] : "" };
+}
+
+/* ---------- Suggestions ---------- */
+let suggOn = lire("cib:sugg", true);
+const popup = $("#popup");
+let items = [], idx = 0, ctx = null;
+
+function calculer(){
+  if(!suggOn){ cacherPopup(); return; }
+  const c = infoCurseur(); if(!c){ cacherPopup(); return; }
+  const res = [];
+  // Formule complète
+  const av = normPh(c.avant.replace(/\s+/g," "));
+  for(let i=0;i<PHRASES.length;i++){
+    const p = PHRASES_N[i];
+    for(let k=p.length-1; k>=8; k--){
+      const debut = p.slice(0,k);
+      if(debut.indexOf(" ")<0) break;
+      if(av.endsWith(debut) && (av.length===k || /[^\p{L}]/u.test(av[av.length-k-1]))){
+        res.push({type:"phrase", txt: PHRASES[i].slice(k), vue: (c.prefixe||"") + PHRASES[i].slice(k)}); break;
+      }
+    }
+    if(res.length) break;
+  }
+  if(c.prefixe.length>=2){
+    const pre = sansAccent(c.prefixe), preL = c.prefixe.toLowerCase();
+    const cands = [];
+    tousLesMots().forEach(w=>{ if(w.length>c.prefixe.length && sansAccent(w).startsWith(pre)) cands.push(w); });
+    cands.sort((a,b)=>{
+      const exA = a.startsWith(preL)?1:0, exB = b.startsWith(preL)?1:0;
+      return (exB-exA) || (score(b,c.prev)-score(a,c.prev));
+    });
+    const maj = c.prefixe[0] !== c.prefixe[0].toLowerCase();
+    cands.slice(0,5).forEach(w=>res.push({type:"mot", txt: maj ? w[0].toUpperCase()+w.slice(1) : w}));
+  } else if(!c.prefixe && c.prev && /[ \u00a0]$/.test(c.avant)){
+    const suite = [];
+    const vu = new Set();
+    [appris.b, GRAINES.b].forEach(tab=>{ for(const k in tab){ const [a,w] = k.split(" "); if(a===c.prev && !vu.has(w)){ vu.add(w); suite.push(w);} } });
+    suite.sort((a,b)=>bigr(c.prev,b)-bigr(c.prev,a));
+    suite.slice(0,4).forEach(w=>res.push({type:"suivant", txt:w}));
+  }
+  if(!res.length){ cacherPopup(); return; }
+  ctx = c; items = res; idx = 0; afficher();
+}
+
+function afficher(enCours){
+  popup.innerHTML = "";
+  if(enCours){
+    popup.innerHTML = `<div class="pied">Rédaction de la suite…</div>`;
+  } else {
+    items.forEach((it,i)=>{
+      const b = document.createElement("button");
+      b.className = "item " + (it.type==="phrase"||it.type==="ia" ? "phrase" : "") + (i===idx?" sel":"");
+      b.setAttribute("role","option");
+      const t = document.createElement("span"); t.className="t"; t.textContent = it.type==="phrase" ? "… "+it.vue.trim() : it.type==="ia" ? "… "+it.txt.trim() : it.txt;
+      const k = document.createElement("span"); k.className="k";
+      k.textContent = it.type==="phrase" ? "formule" : it.type==="ia" ? "suggestion IA" : it.type==="suivant" ? "mot suivant" : "";
+      b.append(t,k);
+      b.addEventListener("pointerdown", e=>{ e.preventDefault(); idx=i; accepter(); });
+      popup.appendChild(b);
+    });
+    const pied = document.createElement("div"); pied.className="pied";
+    pied.innerHTML = `<span class="k-desk">Tab pour accepter, ↑ ↓ pour choisir, Échap pour fermer</span><span class="k-desk-alt"></span>`;
+    if(matchMedia("(max-width:600px)").matches) pied.textContent = "Touchez une suggestion pour l’insérer";
+    popup.appendChild(pied);
+  }
+  popup.classList.remove("hidden");
+  placerPopup();
+}
+function placerPopup(){
+  const s = getSelection(); if(!s.rangeCount) return;
+  const r = s.getRangeAt(0).cloneRange(); r.collapse(true);
+  let rect = r.getClientRects()[0];
+  if(!rect){ const el = (r.startContainer.nodeType===1 ? r.startContainer : r.startContainer.parentElement); rect = el.getBoundingClientRect(); }
+  const h = popup.offsetHeight || 120, w = popup.offsetWidth || 240;
+  let top = rect.bottom + 6, left = rect.left;
+  if(top + h > innerHeight - 50) top = rect.top - h - 6;
+  left = Math.max(8, Math.min(left, innerWidth - w - 8));
+  popup.style.top = top+"px"; popup.style.left = left+"px";
+}
+function cacherPopup(){ popup.classList.add("hidden"); items = []; ctx = null; }
+
+function accepter(){
+  const it = items[idx]; if(!it){ cacherPopup(); return; }
+  page.focus();
+  const c = infoCurseur() || ctx;
+  if(it.type==="mot" && c && c.prefixe){
+    const r = document.createRange();
+    r.setStart(c.node, c.off - c.prefixe.length); r.setEnd(c.node, c.off);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    document.execCommand("insertText", false, it.txt + " ");
+    apprendreMot(c.prev, it.txt.toLowerCase());
+  } else if(it.type==="suivant"){
+    document.execCommand("insertText", false, it.txt + " ");
+    apprendreMot(c && c.prev, it.txt);
+  } else {
+    document.execCommand("insertText", false, it.txt);
+  }
+  cacherPopup();
+  setTimeout(calculer, 0);
+}
+
+page.addEventListener("input", e=>{
+  if(e.inputType==="insertText" && e.data && /[\s.,;:!?)]/.test(e.data)){
+    const c = infoCurseur();
+    if(c){ const ws = tokens(c.avant.slice(0,-1)); if(ws.length) apprendreMot(ws.length>1?ws[ws.length-2]:"", ws[ws.length-1]); }
+  }
+  nettoyerChamps();
+  sauverBientot(); compter();
+  if(e.inputType && e.inputType.startsWith("insert")) calculer(); else cacherPopup();
+});
+page.addEventListener("keydown", e=>{
+  const ouvert = !popup.classList.contains("hidden") && items.length;
+  if(ouvert){
+    if(e.key==="ArrowDown"){ e.preventDefault(); idx=(idx+1)%items.length; afficher(); return; }
+    if(e.key==="ArrowUp"){ e.preventDefault(); idx=(idx-1+items.length)%items.length; afficher(); return; }
+    if(e.key==="Tab"){ e.preventDefault(); accepter(); return; }
+    if(e.key==="Escape"){ e.preventDefault(); cacherPopup(); return; }
+  }
+  if(e.key==="Tab" && !e.shiftKey){ e.preventDefault(); if(!champSuivant()) document.execCommand("insertText", false, "\u00a0\u00a0\u00a0\u00a0"); return; }
+  if(e.key===" " && (e.ctrlKey||e.metaKey)){ e.preventDefault(); continuerIA(); return; }
+});
+page.addEventListener("keyup", e=>{ if(/^Arrow|Home|End|PageUp|PageDown/.test(e.key) && !items.length) cacherPopup(); majBoutons(); });
+page.addEventListener("mouseup", ()=>{ cacherPopup(); majBoutons(); });
+page.addEventListener("blur", ()=>setTimeout(()=>{ if(document.activeElement!==page) cacherPopup(); }, 150));
+window.addEventListener("scroll", ()=>{ if(!popup.classList.contains("hidden")) placerPopup(); }, {passive:true});
+
+$("#b-sugg").setAttribute("aria-pressed", String(suggOn));
+$("#b-sugg").addEventListener("click", ()=>{
+  suggOn = !suggOn; ecrire("cib:sugg", suggOn);
+  $("#b-sugg").setAttribute("aria-pressed", String(suggOn));
+  if(!suggOn) cacherPopup();
+  toast(suggOn ? "Suggestions activées" : "Suggestions désactivées");
+});
+
+/* ---------- Suite de phrase par l’IA (si disponible) ---------- */
+let sample = null;
+// Version Android : pas de suite par l’IA (elle nécessite un compte Claude).
+let iaEnCours = null;
+async function continuerIA(){
+  if(!sample){ return; }
+  const c = infoCurseur();
+  if(!c){ toast("Placez le curseur à l’endroit où continuer."); return; }
+  const r = document.createRange(); r.setStart(page,0); r.setEnd(c.node, c.off);
+  const contexte = r.toString().replace(/\s+/g," ").slice(-1500);
+  if(contexte.trim().length < 3){ toast("Écrivez d’abord quelques mots."); return; }
+  if(iaEnCours) iaEnCours.abort();
+  iaEnCours = new AbortController();
+  ctx = c; items = []; afficher(true);
+  try{
+    const { text } = await sample(
+      "Tu aides à rédiger un document en français (lettre, demande, courrier administratif ou autre). " +
+      "Voici le texte situé juste avant le curseur :\n<<<\n" + contexte + "\n>>>\n" +
+      "Propose la suite immédiate, au plus une phrase, dans le même ton, en reprenant exactement là où le texte s’arrête. " +
+      "Si le texte s’arrête au milieu d’un mot, termine ce mot. Commence par une espace si un nouveau mot commence. " +
+      "Réponds uniquement avec le texte à insérer, sans guillemets, sans explication.",
+      { modelTier: "quick", signal: iaEnCours.signal, cache: false });
+    let t = (text||"").replace(/^["«»“”]+|["«»“”]+$/g,"");
+    if(!t.trim()){ cacherPopup(); toast("Aucune suite proposée."); return; }
+    if(!/\s$/.test(c.avant) && c.avant && !/^[\s,.;:!?]/.test(t) && !c.prefixe) t = " " + t.trimStart();
+    items = [{type:"ia", txt:t}]; idx = 0; afficher();
+  }catch(e){
+    cacherPopup();
+    if(e && e.code==="not_granted"){ $("#b-ia").classList.add("hidden"); toast("La suite par l’IA n’a pas été autorisée."); }
+    else if(e && e.code==="rate_limited") toast("Trop de demandes, réessayez dans un instant.");
+    else if(e && e.name!=="AbortError") toast("La suite n’a pas pu être proposée.");
+  }
+}
+$("#b-ia").addEventListener("mousedown", e=>e.preventDefault());
+$("#b-ia").addEventListener("click", continuerIA);
+
+/* ---------- Barre d’outils ---------- */
+document.execCommand("defaultParagraphSeparator", false, "p");
+document.querySelectorAll(".ob[data-cmd]").forEach(b=>{
+  b.addEventListener("mousedown", e=>e.preventDefault());
+  b.addEventListener("click", ()=>{ page.focus(); document.execCommand(b.dataset.cmd, false, null); majBoutons(); sauverBientot(); });
+});
+function majBoutons(){
+  ["bold","italic","underline","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList"].forEach(c=>{
+    const b = document.querySelector(`.ob[data-cmd="${c}"]`); if(!b) return;
+    let on=false; try{ on = document.queryCommandState(c); }catch(e){}
+    b.classList.toggle("on", on);
+  });
+  const s = getSelection();
+  if(s.rangeCount && page.contains(s.anchorNode)){
+    const bl = blocDe(s.anchorNode);
+    $("#style").value = /^H[123]$/.test(bl.tagName) ? bl.tagName.toLowerCase() : "p";
+  }
+}
+let selSauvee = null;
+function garderSel(){ const s=getSelection(); if(s.rangeCount && page.contains(s.anchorNode)) selSauvee = s.getRangeAt(0).cloneRange(); }
+function rendreSel(){ page.focus(); if(selSauvee){ const s=getSelection(); s.removeAllRanges(); s.addRange(selSauvee); } }
+["#style","#police","#taille","#couleur"].forEach(id=>{ $(id).addEventListener("pointerdown", garderSel); $(id).addEventListener("focus", garderSel); });
+$("#style").addEventListener("change", e=>{ rendreSel(); document.execCommand("formatBlock", false, e.target.value); sauverBientot(); });
+$("#police").addEventListener("change", e=>{ rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontName", false, e.target.value); sauverBientot(); });
+$("#taille").addEventListener("change", e=>{
+  rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontSize", false, "7");
+  page.querySelectorAll('span[style*="xxx-large"], font[size="7"]').forEach(el=>{ el.removeAttribute("size"); el.style.fontSize = e.target.value+"pt"; });
+  sauverBientot();
+});
+$("#couleur").addEventListener("input", e=>{ rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("foreColor", false, e.target.value); document.querySelector(".couleur span").style.borderColor = e.target.value; sauverBientot(); });
+$("#b-tableau").addEventListener("mousedown", e=>e.preventDefault());
+$("#b-tableau").addEventListener("click", ()=>{
+  page.focus();
+  const ligne = "<tr>" + "<td><br></td>".repeat(3) + "</tr>";
+  document.execCommand("insertHTML", false, `<table><tbody>${ligne.repeat(3)}</tbody></table><p><br></p>`);
+  sauverBientot();
+});
+$("#titre").addEventListener("input", sauverBientot);
+$("#vers-accueil").addEventListener("click", ()=>{ if(courant) sauver(); montrer("accueil"); });
+
+function compter(){
+  const n = (page.innerText.replace(/\[[^\]]*\]/g," ").match(/[\p{L}\p{N}’'-]+/gu)||[]).length;
+  $("#compte").textContent = n + (n>1 ? " mots" : " mot");
+}
+
+/* ---------- Ouvrir un fichier ---------- */
+$("#b-ouvrir").addEventListener("click", ()=>$("#fichier").click());
+$("#fichier").addEventListener("change", async e=>{
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  const nom = f.name.replace(/\.[^.]+$/,"");
+  try{
+    let html;
+    if(/\.docx$/i.test(f.name)){
+      if(!window.mammoth) throw new Error("lecteur");
+      const res = await mammoth.convertToHtml({arrayBuffer: await f.arrayBuffer()});
+      html = res.value || "<p><br></p>";
+    } else if(/\.html?$/i.test(f.name)){
+      const d = new DOMParser().parseFromString(await f.text(), "text/html");
+      d.querySelectorAll("script,style,iframe,object,embed").forEach(n=>n.remove());
+      d.querySelectorAll("*").forEach(n=>[...n.attributes].forEach(a=>{ if(/^on/i.test(a.name)) n.removeAttribute(a.name); }));
+      html = d.body.innerHTML;
+    } else {
+      const t = await f.text();
+      html = t.split(/\r?\n/).map(l=>{ const p=document.createElement("p"); p.textContent=l; return l ? p.outerHTML : "<p><br></p>"; }).join("");
+    }
+    ouvrirDoc("d"+Date.now(), nom, html);
+    toast("« " + nom + " » est ouvert.");
+  }catch(err){ toast("Ce fichier n’a pas pu être ouvert. Essayez un fichier .docx, .txt ou .html."); }
+});
+
+/* ---------- Export ---------- */
+/* Version Android : le fichier est écrit dans l’application puis proposé via le menu
+   « Partager » (Enregistrer dans Fichiers ou Drive, envoyer par WhatsApp, e-mail…). */
+function enBase64(data){
+  const blob = data instanceof Blob ? data : new Blob([data], {type:"text/html"});
+  return new Promise((ok, ko)=>{ const r = new FileReader(); r.onload = ()=>ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(blob); });
+}
+async function proposer(nomFichier, data){
+  const P = window.Capacitor && window.Capacitor.Plugins;
+  if(!P || !P.Filesystem || !P.Share){
+    const type = /\.docx$/.test(nomFichier) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "text/html";
+    const blob = data instanceof Blob ? data : new Blob([data], {type});
+    // Sur iPhone et téléphone : menu Partager (« Enregistrer dans Fichiers », WhatsApp, e-mail…).
+    if(matchMedia("(pointer:coarse)").matches && navigator.canShare){
+      try{
+        const f = new File([blob], nomFichier, {type});
+        if(navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:nomFichier}); return; }
+      }catch(e){ if(e && e.name==="AbortError") return; }
+    }
+    // Sur ordinateur : téléchargement classique.
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nomFichier;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    toast("Fichier enregistré : " + nomFichier);
+    return;
+  }
+  try{
+    await P.Filesystem.writeFile({path: nomFichier, data: await enBase64(data), directory: "CACHE"});
+    const { uri } = await P.Filesystem.getUri({path: nomFichier, directory: "CACHE"});
+    await P.Share.share({title: nomFichier, dialogTitle: "Enregistrer ou envoyer « " + nomFichier + " »", files: [uri]});
+  }catch(e){
+    if(!/cancel/i.test(String(e && (e.message || e)))) toast("L’export n’a pas abouti.");
+  }
+}
+const nomSur = () => (($("#titre").value.trim()) || "Document").replace(/[\\/:*?"<>|]+/g,"-").slice(0,80);
+
+$("#b-html").addEventListener("click", ()=>{
+  sauver();
+  const corps = page.innerHTML.replace(/ class="champ"/g,"");
+  const doc = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${nomSur()}</title><style>body{max-width:16cm;margin:2.5cm auto;font-family:"Times New Roman",serif;font-size:12pt;line-height:1.45}p{margin:0 0 .45em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}@page{size:A4;margin:2.5cm}</style></head><body>${corps}</body></html>`;
+  proposer(nomSur()+".html", doc);
+});
+
+/* Conversion de la page en .docx (Office Open XML) */
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function hexa(c){
+  if(!c) return null;
+  let m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if(m) return [m[1],m[2],m[3]].map(n=>(+n).toString(16).padStart(2,"0")).join("").toUpperCase();
+  m = c.match(/^#([0-9a-f]{6})$/i); if(m) return m[1].toUpperCase();
+  m = c.match(/^#([0-9a-f]{3})$/i); if(m) return m[1].split("").map(x=>x+x).join("").toUpperCase();
+  return null;
+}
+function demiPoints(fs){
+  if(!fs) return null;
+  const mots = {"x-small":10,"small":13,"medium":16,"large":18,"x-large":24,"xx-large":32,"xxx-large":48};
+  let m = fs.match(/([\d.]+)pt/); if(m) return Math.round(+m[1]*2);
+  m = fs.match(/([\d.]+)px/); if(m) return Math.round(+m[1]*0.75*2);
+  if(mots[fs]) return Math.round(mots[fs]*0.75*2);
+  return null;
+}
+function proprietes(el, p){
+  const q = Object.assign({}, p);
+  const t = el.tagName, st = el.style;
+  if(t==="B"||t==="STRONG") q.b = true;
+  if(t==="I"||t==="EM") q.i = true;
+  if(t==="U") q.u = true;
+  if(st){
+    if(st.fontWeight==="bold" || +st.fontWeight>=600) q.b = true;
+    if(st.fontWeight==="normal" || st.fontWeight==="400") q.b = false;
+    if(st.fontStyle==="italic") q.i = true;
+    if((st.textDecorationLine||st.textDecoration||"").includes("underline")) q.u = true;
+    const c = hexa(st.color); if(c) q.c = c;
+    const s = demiPoints(st.fontSize); if(s) q.s = s;
+    if(st.fontFamily) q.f = st.fontFamily.split(",")[0].replace(/['"]/g,"").trim();
+  }
+  if(t==="FONT"){
+    if(el.getAttribute("face")) q.f = el.getAttribute("face").split(",")[0].replace(/['"]/g,"").trim();
+    const c = hexa(el.getAttribute("color")); if(c) q.c = c;
+    const tailles = {1:16,2:20,3:24,4:28,5:36,6:48,7:72}; const sz = el.getAttribute("size"); if(sz && tailles[sz]) q.s = tailles[sz];
+  }
+  return q;
+}
+function runs(node, p, out){
+  node.childNodes.forEach(n=>{
+    if(n.nodeType===3){ if(n.data) out.push(run(n.data.replace(/\u00a0/g," "), p)); }
+    else if(n.nodeType===1){
+      if(n.tagName==="BR") out.push("<w:r><w:br/></w:r>");
+      else runs(n, proprietes(n, p), out);
+    }
+  });
+  return out;
+}
+function run(t, p){
+  let rpr = "";
+  if(p.f) rpr += `<w:rFonts w:ascii="${esc(p.f)}" w:hAnsi="${esc(p.f)}" w:cs="${esc(p.f)}"/>`;
+  if(p.b) rpr += "<w:b/>"; if(p.i) rpr += "<w:i/>"; if(p.u) rpr += `<w:u w:val="single"/>`;
+  if(p.c) rpr += `<w:color w:val="${p.c}"/>`; if(p.s) rpr += `<w:sz w:val="${p.s}"/><w:szCs w:val="${p.s}"/>`;
+  return `<w:r>${rpr?`<w:rPr>${rpr}</w:rPr>`:""}<w:t xml:space="preserve">${esc(t)}</w:t></w:r>`;
+}
+function jc(el){
+  const a = (el.style && el.style.textAlign) || el.getAttribute && el.getAttribute("align") || "";
+  return {center:"center",right:"right",justify:"both",left:"left"}[a] || null;
+}
+function para(el, opts){
+  opts = opts || {};
+  let ppr = "";
+  if(opts.style) ppr += `<w:pStyle w:val="${opts.style}"/>`;
+  if(opts.num) ppr += `<w:numPr><w:ilvl w:val="0"/><w:numId w:val="${opts.num}"/></w:numPr>`;
+  const j = jc(el) || opts.jc; if(j) ppr += `<w:jc w:val="${j}"/>`;
+  const contenu = runs(el, opts.props || {}, []).join("");
+  return `<w:p>${ppr?`<w:pPr>${ppr}</w:pPr>`:""}${contenu}</w:p>`;
+}
+const BLOCS = /^(P|DIV|H1|H2|H3|H4|H5|H6|UL|OL|TABLE|BLOCKQUOTE|LI|PRE)$/;
+function blocs(parent, out){
+  let enLigne = null;
+  const vider = () => { if(enLigne){ out.push(para(enLigne)); enLigne = null; } };
+  parent.childNodes.forEach(n=>{
+    if(n.nodeType===1 && BLOCS.test(n.tagName)){
+      vider();
+      const t = n.tagName;
+      if(/^H[1-6]$/.test(t)) out.push(para(n, {style:"Heading"+Math.min(3,+t[1])}));
+      else if(t==="UL"||t==="OL"){
+        n.querySelectorAll(":scope > li").forEach(li=>out.push(para(li, {num: t==="UL"?1:2, style:"ListParagraph"})));
+      }
+      else if(t==="TABLE") out.push(tableau(n));
+      else if((t==="DIV"||t==="BLOCKQUOTE") && [...n.children].some(c=>BLOCS.test(c.tagName))) blocs(n, out);
+      else out.push(para(n));
+    } else {
+      if(n.nodeType===3 && !n.data.trim() && !enLigne) return;
+      if(!enLigne) enLigne = document.createElement("p");
+      enLigne.appendChild(n.cloneNode(true));
+    }
+  });
+  vider();
+  return out;
+}
+function tableau(t){
+  const lignes = [...t.querySelectorAll("tr")];
+  const nbCol = Math.max(1, ...lignes.map(l=>l.children.length));
+  const largeur = Math.floor(9070/nbCol);
+  const b = '<w:top w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:left w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:right w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="808080"/>';
+  let x = `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>${b}</w:tblBorders></w:tblPr><w:tblGrid>${`<w:gridCol w:w="${largeur}"/>`.repeat(nbCol)}</w:tblGrid>`;
+  lignes.forEach(l=>{
+    x += "<w:tr>";
+    [...l.children].forEach(c=>{
+      const ps = blocs(c, []);
+      x += `<w:tc><w:tcPr><w:tcW w:w="${largeur}" w:type="dxa"/></w:tcPr>${ps.length?ps.join(""):"<w:p/>"}</w:tc>`;
+    });
+    for(let i=l.children.length;i<nbCol;i++) x += `<w:tc><w:tcPr><w:tcW w:w="${largeur}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
+    x += "</w:tr>";
+  });
+  return x + "</w:tbl>";
+}
+async function versDocx(){
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const corps = blocs(page, []).join("") + "<w:p/>";
+  const document_ = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${corps}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const titreStyle = (id,nom,sz) => `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${nom}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="${+id.slice(-1)-1}"/></w:pPr><w:rPr><w:b/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr></w:style>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="fr-FR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>${titreStyle("Heading1","heading 1",36)}${titreStyle("Heading2","heading 2",30)}${titreStyle("Heading3","heading 3",26)}<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/></w:style></w:styles>`;
+  const niveau = (fmt, txt) => `<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${txt}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl>`;
+  const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ${W}><w:abstractNum w:abstractNumId="0">${niveau("bullet","•")}</w:abstractNum><w:abstractNum w:abstractNumId="1">${niveau("decimal","%1.")}</w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>`;
+  const types = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>`;
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", types);
+  zip.file("_rels/.rels", rels);
+  zip.file("word/document.xml", document_);
+  zip.file("docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>EditeurCiB</Application><Company>CiB</Company></Properties>`);
+  zip.file("word/styles.xml", styles);
+  zip.file("word/numbering.xml", numbering);
+  zip.file("word/_rels/document.xml.rels", docRels);
+  return zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+}
+$("#b-docx").addEventListener("click", async ()=>{
+  sauver();
+  if(!window.JSZip){ toast("Le module d’export .docx n’a pas pu se charger."); return; }
+  try{ proposer(nomSur()+".docx", await versDocx()); }
+  catch(e){ toast("La création du fichier .docx a échoué."); }
+});
+
+/* ---------- À propos ---------- */
+const apropos = $("#apropos");
+$("#b-apropos").addEventListener("click", ()=>{ apropos.classList.remove("hidden"); $("#b-fermer").focus(); });
+$("#b-fermer").addEventListener("click", ()=>apropos.classList.add("hidden"));
+apropos.addEventListener("click", e=>{ if(e.target===apropos) apropos.classList.add("hidden"); });
+
+/* ---------- Bouton retour et mise en arrière-plan (Android) ---------- */
+const AppNatif = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+if(AppNatif){
+  AppNatif.addListener("backButton", ()=>{
+    if(!apropos.classList.contains("hidden")){ apropos.classList.add("hidden"); return; }
+    if(!popup.classList.contains("hidden")){ cacherPopup(); return; }
+    if(!$("#editeur").classList.contains("hidden")){ if(courant) sauver(); montrer("accueil"); }
+    else AppNatif.exitApp();
+  });
+  AppNatif.addListener("pause", ()=>{ if(courant) sauver(); });
+}
+
+/* ---------- Application installable (hors version Android) ---------- */
+if("serviceWorker" in navigator && !window.Capacitor && (location.protocol === "https:" || location.hostname === "localhost")){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
+/* ---------- Invitation à installer ---------- */
+(function(){
+  const autonome = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if(autonome || window.Capacitor || lire("cib:installer-ferme", false)) return;
+  const bandeau = $("#installer"), texte = $("#installer-texte"), bouton = $("#b-installer");
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if(ios){
+    texte.innerHTML = "Installez EditeurCiB : touchez <strong>Partager</strong> <span aria-hidden=\"true\">⬆︎</span> puis <strong>Sur l’écran d’accueil</strong>.";
+    bandeau.classList.remove("hidden");
+  }
+  let invite = null;
+  window.addEventListener("beforeinstallprompt", e=>{
+    e.preventDefault(); invite = e;
+    texte.textContent = "Installez EditeurCiB sur cet appareil : il s’ouvrira comme une application, même sans Internet.";
+    bouton.classList.remove("hidden"); bandeau.classList.remove("hidden");
+  });
+  bouton.addEventListener("click", async ()=>{ if(!invite) return; invite.prompt(); await invite.userChoice; invite = null; bandeau.classList.add("hidden"); });
+  $("#b-installer-fermer").addEventListener("click", ()=>{ bandeau.classList.add("hidden"); ecrire("cib:installer-ferme", true); });
+})();
+
+/* ---------- Démarrage ---------- */
+montrer("accueil");
+})();
+</script>
+</body>
+</html>

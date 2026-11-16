@@ -1,0 +1,14 @@
+node_modules/
+# Copie de l'application pour Android, recréée par « npm run preparer »
+www/
+*.jks
+*.keystore
+cle/
+android/keystore.properties
+android/local.properties
+livrables/
+.DS_Store
+
+# Documents de test : ne jamais envoyer sur GitHub
+test/
+tests/

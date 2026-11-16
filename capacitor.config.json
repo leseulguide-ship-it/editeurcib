@@ -1,0 +1,9 @@
+{
+  "appId": "com.cib.editeurcib",
+  "appName": "EditeurCiB",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

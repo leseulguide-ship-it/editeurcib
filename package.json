@@ -1,0 +1,21 @@
+{
+  "name": "editeurcib",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EditeurCiB : le traitement de texte de CiB, hors ligne. Créé par Mathias Pascal Ikeng.",
+  "scripts": {
+    "preparer": "node scripts/preparer-android.mjs",
+    "sync": "npm run preparer && npx cap sync android",
+    "apk": "npm run sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}
