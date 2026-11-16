@@ -17,6 +17,7 @@
 <script src="lib/jszip.min.js"></script>
 <script src="lib/mammoth.browser.min.js"></script>
 <script src="js/stockage.js"></script>
+<script src="js/word.js"></script>
 <style>
 :root{
   --desk:#E3E7EE; --bar:#FFFFFF; --ink:#1B2A4A; --ink-soft:#56627C; --line:#CBD2DE;
@@ -140,6 +141,8 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .dlg-champs{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}
 .dlg-champ{border:1px dashed var(--champ-line);background:var(--champ);color:#3D3310;border-radius:6px;padding:5px 8px;font-size:14px;text-align:left}
 .dlg-plus{color:var(--ink-soft);font-size:14px;align-self:center}
+.dlg-liste{margin:6px 0 10px;padding-left:20px;line-height:1.5;font-size:14.5px}
+.dlg-note{color:var(--ink-soft);font-size:14px}
 .installer{display:flex;align-items:center;gap:12px;background:var(--bar);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 12px 12px 14px;margin:0 0 26px}
 .installer img{border-radius:9px;flex:none;box-shadow:0 0 0 1px var(--line)}
 .installer p{margin:0;flex:1;font-size:14px;line-height:1.45}
@@ -154,7 +157,14 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 #page table{border-collapse:collapse;width:100%;margin:.5em 0}
 #page td,#page th{border:1px solid #9AA3B2;padding:5px 8px;vertical-align:top;min-width:40px}
 #page ul,#page ol{margin:0 0 .5em;padding-left:1.6em}
-#page img{max-width:100%}
+#page img{max-width:100%;height:auto}
+#page table.sans-bordure td,#page table.sans-bordure th{border:1px dashed #DDE2EA}
+#page .tab{white-space:pre;tab-size:4}
+#page hr{border:0;border-top:1px solid #999;margin:.6em 0}
+#page hr.saut-page{border-top:2px dashed #9AA3B2;margin:1.2em 0;height:0;overflow:visible;position:relative}
+#page hr.saut-page::after{content:"Saut de page";position:absolute;left:50%;top:-.75em;transform:translateX(-50%);background:var(--paper);color:#7A8496;font:12px var(--ui);padding:0 8px}
+#page ul ul{list-style-type:circle}
+#page ul ul ul{list-style-type:square}
 /* Champ à remplir : fond en « background-image » et couleur du texte inchangée, pour que le clavier
    du téléphone ne recopie pas ce style sur le texte tapé à la place du champ (B4). */
 .champ{background-image:linear-gradient(var(--champ),var(--champ));border-bottom:1px dashed var(--champ-line);border-radius:2px;padding:0 1px}
@@ -234,6 +244,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
     <div class="groupe">
       <button class="ob" data-cmd="insertUnorderedList" title="Liste à puces"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
       <button class="ob" data-cmd="insertOrderedList" title="Liste numérotée"><svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 5l1.5-1v5M3.5 13.5c.5-1 2.5-1 2.5.3 0 1-2.5 2.2-2.5 3.2H6"/></svg></button>
+      <button class="ob" id="b-saut" title="Insérer un saut de page"><svg viewBox="0 0 24 24"><path d="M6 3v5h12V3M6 21v-5h12v5"/><path d="M3 12h3M9 12h2M13 12h2M18 12h3"/></svg></button>
       <button class="ob" id="b-tableau" title="Insérer un tableau 3 × 3"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 15h16M9.5 5v14M14.5 5v14"/></svg></button>
     </div>
     <div class="groupe">
@@ -856,7 +867,12 @@ page.addEventListener("keydown", e=>{
     if(e.key==="Tab"){ e.preventDefault(); accepter(); return; }
     if(e.key==="Escape"){ e.preventDefault(); cacherPopup(); return; }
   }
-  if(e.key==="Tab" && !e.shiftKey){ e.preventDefault(); if(!champSuivant()) document.execCommand("insertText", false, "\u00a0\u00a0\u00a0\u00a0"); return; }
+  if(e.key==="Tab"){
+    e.preventDefault();
+    if(tabDansTableau(e.shiftKey)) return;
+    if(!e.shiftKey && !champSuivant()) document.execCommand("insertHTML", false, '<span class="tab">\t</span>&#8203;');
+    return;
+  }
   if(e.key===" " && (e.ctrlKey||e.metaKey)){ e.preventDefault(); continuerIA(); return; }
 });
 page.addEventListener("keyup", e=>{ if(/^Arrow|Home|End|PageUp|PageDown/.test(e.key) && !items.length) cacherPopup(); majBoutons(); });
@@ -942,9 +958,41 @@ $("#b-tableau").addEventListener("mousedown", e=>e.preventDefault());
 $("#b-tableau").addEventListener("click", ()=>{
   page.focus();
   const ligne = "<tr>" + "<td><br></td>".repeat(3) + "</tr>";
-  document.execCommand("insertHTML", false, `<table><tbody>${ligne.repeat(3)}</tbody></table><p><br></p>`);
+  document.execCommand("insertHTML", false, `<table data-nouveau="1"><tbody>${ligne.repeat(3)}</tbody></table><p><br></p>`);
+  // Le curseur va dans la première case du nouveau tableau (B10).
+  const t = page.querySelector('table[data-nouveau]');
+  if(t){ t.removeAttribute("data-nouveau"); allerCase(t.rows[0].cells[0]); }
   sauverBientot();
 });
+$("#b-saut").addEventListener("mousedown", e=>e.preventDefault());
+$("#b-saut").addEventListener("click", ()=>{
+  page.focus();
+  document.execCommand("insertHTML", false, '<hr class="saut-page"><p id="apres-saut"><br></p>');
+  const p = $("#apres-saut"); if(p){ p.removeAttribute("id"); const r = document.createRange(); r.setStart(p, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
+  sauverBientot();
+});
+/* Tableaux : Tab / Maj+Tab passent d'une case à l'autre ; Tab dans la dernière case ajoute une ligne. */
+function caseDe(n){ while(n && n !== page){ if(n.nodeType === 1 && (n.tagName === "TD" || n.tagName === "TH")) return n; n = n.parentNode; } return null; }
+function allerCase(c){
+  const ch = c.querySelector(".champ");
+  if(ch && CHAMP_VIDE.test(ch.textContent)){ selectionnerChamp(ch); return; }
+  const r = document.createRange(); r.selectNodeContents(c);
+  if(c.textContent.trim()){ /* sélectionne le contenu, comme Word */ } else r.collapse(true);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function tabDansTableau(arriere){
+  const s = getSelection(); if(!s.rangeCount) return false;
+  const c = caseDe(s.anchorNode); if(!c) return false;
+  const t = c.closest("table"), cases = [...t.querySelectorAll("td,th")].filter(x=>x.closest("table") === t);
+  const i = cases.indexOf(c);
+  if(arriere){ if(i > 0) allerCase(cases[i-1]); return true; }
+  if(i < cases.length - 1){ allerCase(cases[i+1]); return true; }
+  // Dernière case : nouvelle ligne.
+  const tr = c.parentElement, neuve = document.createElement("tr");
+  [...tr.cells].forEach(x=>{ const td = document.createElement("td"); td.innerHTML = "<br>"; if(x.colSpan > 1) td.colSpan = x.colSpan; neuve.appendChild(td); });
+  tr.after(neuve); allerCase(neuve.cells[0]); sauverBientot();
+  return true;
+}
 $("#titre").addEventListener("input", sauverBientot);
 $("#vers-accueil").addEventListener("click", ()=>{ if(courant) quitterEditeur(); else montrer("accueil"); });
 
@@ -957,25 +1005,50 @@ function compter(){
 $("#b-ouvrir").addEventListener("click", ()=>$("#fichier").click());
 $("#fichier").addEventListener("change", async e=>{
   const f = e.target.files[0]; e.target.value = ""; if(!f) return;
-  const nom = f.name.replace(/\.[^.]+$/,"");
+  await ouvrirFichier(f.name, ()=>f.arrayBuffer());
+});
+// Ouvre un fichier .docx, .txt ou .html (choisi sur l'appareil ou reçu d'une autre application).
+async function ouvrirFichier(nomFichier, lireOctets){
+  const nom = nomFichier.replace(/\.[^.]+$/,"") || "Document";
+  let html, avert = [];
   try{
-    let html;
-    if(/\.docx$/i.test(f.name)){
-      if(!window.mammoth) throw new Error("lecteur");
-      const res = await mammoth.convertToHtml({arrayBuffer: await f.arrayBuffer()});
-      html = res.value || "<p><br></p>";
-    } else if(/\.html?$/i.test(f.name)){
-      const d = new DOMParser().parseFromString(await f.text(), "text/html");
-      d.querySelectorAll("script,style,iframe,object,embed").forEach(n=>n.remove());
-      d.querySelectorAll("*").forEach(n=>[...n.attributes].forEach(a=>{ if(/^on/i.test(a.name)) n.removeAttribute(a.name); }));
-      html = d.body.innerHTML;
+    const octets = await lireOctets();
+    if(/\.docx$/i.test(nomFichier) || /^PK/.test(new TextDecoder().decode(new Uint8Array(octets.slice(0, 2))))){
+      if(!window.CiBWord || !window.JSZip) throw new Error("lecteur");
+      const r = await CiBWord.importer(octets);
+      html = r.html; avert = r.avertissements;
     } else {
-      const t = await f.text();
-      html = t.split(/\r?\n/).map(l=>{ const p=document.createElement("p"); p.textContent=l; return l ? p.outerHTML : "<p><br></p>"; }).join("");
+      const texte = new TextDecoder().decode(octets);
+      if(/\.html?$/i.test(nomFichier) || /^\s*<(!doctype|html)/i.test(texte)) html = CiBWord.nettoyerCollage(texte) || "<p><br></p>";
+      else html = texte.split(/\r?\n/).map(l=>{ const p=document.createElement("p"); p.textContent=l; return l ? p.outerHTML : "<p><br></p>"; }).join("");
     }
-    ouvrirDoc("d"+Date.now(), nom, html);
-    toast("« " + nom + " » est ouvert.");
-  }catch(err){ toast("Ce fichier n’a pas pu être ouvert. Essayez un fichier .docx, .txt ou .html."); }
+  }catch(err){ toast("Ce fichier n’a pas pu être ouvert. Essayez un fichier .docx, .txt ou .html."); return false; }
+  ouvrirDoc(nouvelId(), nom, html);
+  if(avert.length) avertirSimplification(nom, avert); else toast("« " + nom + " » est ouvert.");
+  return true;
+}
+// A4 : message clair quand un document Word complexe a été simplifié.
+function avertirSimplification(nom, avert){
+  const ul = document.createElement("ul"); ul.className = "dlg-liste";
+  avert.forEach(a=>{ const li = document.createElement("li"); li.textContent = a; ul.appendChild(li); });
+  const p = document.createElement("p"); p.className = "dlg-note";
+  p.textContent = "Le texte est conservé. Votre fichier d’origine n’est pas modifié. Vérifiez la mise en page avant d’envoyer ou d’imprimer.";
+  const box = document.createElement("div"); box.append(ul, p);
+  dialogue({ titre: "« " + nom + " » a été simplifié", texte: "Ce document Word contient des éléments qu’EditeurCiB ne sait pas reproduire à l’identique :", contenu: box,
+    boutons: [{libelle:"J’ai compris", valeur:"ok", primaire:true}] });
+}
+
+/* ---------- Coller : texte venant de Word ou d'une page web nettoyé (A10) ---------- */
+page.addEventListener("paste", e=>{
+  const dt = e.clipboardData; if(!dt) return;
+  const html = dt.getData("text/html");
+  if(html){
+    e.preventDefault();
+    const propre = CiBWord.nettoyerCollage(html);
+    if(propre.trim()) document.execCommand("insertHTML", false, propre);
+    else document.execCommand("insertText", false, dt.getData("text/plain"));
+    nettoyerChamps(); sauverBientot(); compter();
+  }
 });
 
 /* ---------- Export ---------- */
@@ -1022,143 +1095,11 @@ $("#b-html").addEventListener("click", async ()=>{
   proposer(nomSur()+".html", doc);
 });
 
-/* Conversion de la page en .docx (Office Open XML) */
-const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-function hexa(c){
-  if(!c) return null;
-  let m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if(m) return [m[1],m[2],m[3]].map(n=>(+n).toString(16).padStart(2,"0")).join("").toUpperCase();
-  m = c.match(/^#([0-9a-f]{6})$/i); if(m) return m[1].toUpperCase();
-  m = c.match(/^#([0-9a-f]{3})$/i); if(m) return m[1].split("").map(x=>x+x).join("").toUpperCase();
-  return null;
-}
-function demiPoints(fs){
-  if(!fs) return null;
-  const mots = {"x-small":10,"small":13,"medium":16,"large":18,"x-large":24,"xx-large":32,"xxx-large":48};
-  let m = fs.match(/([\d.]+)pt/); if(m) return Math.round(+m[1]*2);
-  m = fs.match(/([\d.]+)px/); if(m) return Math.round(+m[1]*0.75*2);
-  if(mots[fs]) return Math.round(mots[fs]*0.75*2);
-  return null;
-}
-function proprietes(el, p){
-  const q = Object.assign({}, p);
-  const t = el.tagName, st = el.style;
-  if(t==="B"||t==="STRONG") q.b = true;
-  if(t==="I"||t==="EM") q.i = true;
-  if(t==="U") q.u = true;
-  if(st){
-    if(st.fontWeight==="bold" || +st.fontWeight>=600) q.b = true;
-    if(st.fontWeight==="normal" || st.fontWeight==="400") q.b = false;
-    if(st.fontStyle==="italic") q.i = true;
-    if((st.textDecorationLine||st.textDecoration||"").includes("underline")) q.u = true;
-    const c = hexa(st.color); if(c) q.c = c;
-    const s = demiPoints(st.fontSize); if(s) q.s = s;
-    if(st.fontFamily) q.f = st.fontFamily.split(",")[0].replace(/['"]/g,"").trim();
-  }
-  if(t==="FONT"){
-    if(el.getAttribute("face")) q.f = el.getAttribute("face").split(",")[0].replace(/['"]/g,"").trim();
-    const c = hexa(el.getAttribute("color")); if(c) q.c = c;
-    const tailles = {1:16,2:20,3:24,4:28,5:36,6:48,7:72}; const sz = el.getAttribute("size"); if(sz && tailles[sz]) q.s = tailles[sz];
-  }
-  return q;
-}
-function runs(node, p, out){
-  node.childNodes.forEach(n=>{
-    if(n.nodeType===3){ if(n.data) out.push(run(n.data.replace(/\u00a0/g," "), p)); }
-    else if(n.nodeType===1){
-      if(n.tagName==="BR") out.push("<w:r><w:br/></w:r>");
-      else runs(n, proprietes(n, p), out);
-    }
-  });
-  return out;
-}
-function run(t, p){
-  let rpr = "";
-  if(p.f) rpr += `<w:rFonts w:ascii="${esc(p.f)}" w:hAnsi="${esc(p.f)}" w:cs="${esc(p.f)}"/>`;
-  if(p.b) rpr += "<w:b/>"; if(p.i) rpr += "<w:i/>"; if(p.u) rpr += `<w:u w:val="single"/>`;
-  if(p.c) rpr += `<w:color w:val="${p.c}"/>`; if(p.s) rpr += `<w:sz w:val="${p.s}"/><w:szCs w:val="${p.s}"/>`;
-  return `<w:r>${rpr?`<w:rPr>${rpr}</w:rPr>`:""}<w:t xml:space="preserve">${esc(t)}</w:t></w:r>`;
-}
-function jc(el){
-  const a = (el.style && el.style.textAlign) || el.getAttribute && el.getAttribute("align") || "";
-  return {center:"center",right:"right",justify:"both",left:"left"}[a] || null;
-}
-function para(el, opts){
-  opts = opts || {};
-  let ppr = "";
-  if(opts.style) ppr += `<w:pStyle w:val="${opts.style}"/>`;
-  if(opts.num) ppr += `<w:numPr><w:ilvl w:val="0"/><w:numId w:val="${opts.num}"/></w:numPr>`;
-  const j = jc(el) || opts.jc; if(j) ppr += `<w:jc w:val="${j}"/>`;
-  const contenu = runs(el, opts.props || {}, []).join("");
-  return `<w:p>${ppr?`<w:pPr>${ppr}</w:pPr>`:""}${contenu}</w:p>`;
-}
-const BLOCS = /^(P|DIV|H1|H2|H3|H4|H5|H6|UL|OL|TABLE|BLOCKQUOTE|LI|PRE)$/;
-function blocs(parent, out){
-  let enLigne = null;
-  const vider = () => { if(enLigne){ out.push(para(enLigne)); enLigne = null; } };
-  parent.childNodes.forEach(n=>{
-    if(n.nodeType===1 && BLOCS.test(n.tagName)){
-      vider();
-      const t = n.tagName;
-      if(/^H[1-6]$/.test(t)) out.push(para(n, {style:"Heading"+Math.min(3,+t[1])}));
-      else if(t==="UL"||t==="OL"){
-        n.querySelectorAll(":scope > li").forEach(li=>out.push(para(li, {num: t==="UL"?1:2, style:"ListParagraph"})));
-      }
-      else if(t==="TABLE") out.push(tableau(n));
-      else if((t==="DIV"||t==="BLOCKQUOTE") && [...n.children].some(c=>BLOCS.test(c.tagName))) blocs(n, out);
-      else out.push(para(n));
-    } else {
-      if(n.nodeType===3 && !n.data.trim() && !enLigne) return;
-      if(!enLigne) enLigne = document.createElement("p");
-      enLigne.appendChild(n.cloneNode(true));
-    }
-  });
-  vider();
-  return out;
-}
-function tableau(t){
-  const lignes = [...t.querySelectorAll("tr")];
-  const nbCol = Math.max(1, ...lignes.map(l=>l.children.length));
-  const largeur = Math.floor(9070/nbCol);
-  const b = '<w:top w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:left w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:right w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="808080"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="808080"/>';
-  let x = `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>${b}</w:tblBorders></w:tblPr><w:tblGrid>${`<w:gridCol w:w="${largeur}"/>`.repeat(nbCol)}</w:tblGrid>`;
-  lignes.forEach(l=>{
-    x += "<w:tr>";
-    [...l.children].forEach(c=>{
-      const ps = blocs(c, []);
-      x += `<w:tc><w:tcPr><w:tcW w:w="${largeur}" w:type="dxa"/></w:tcPr>${ps.length?ps.join(""):"<w:p/>"}</w:tc>`;
-    });
-    for(let i=l.children.length;i<nbCol;i++) x += `<w:tc><w:tcPr><w:tcW w:w="${largeur}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
-    x += "</w:tr>";
-  });
-  return x + "</w:tbl>";
-}
-async function versDocx(){
-  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-  const corps = blocs(page, []).join("") + "<w:p/>";
-  const document_ = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${corps}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-  const titreStyle = (id,nom,sz) => `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${nom}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="${+id.slice(-1)-1}"/></w:pPr><w:rPr><w:b/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr></w:style>`;
-  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="fr-FR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>${titreStyle("Heading1","heading 1",36)}${titreStyle("Heading2","heading 2",30)}${titreStyle("Heading3","heading 3",26)}<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/></w:style></w:styles>`;
-  const niveau = (fmt, txt) => `<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${txt}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl>`;
-  const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ${W}><w:abstractNum w:abstractNumId="0">${niveau("bullet","•")}</w:abstractNum><w:abstractNum w:abstractNumId="1">${niveau("decimal","%1.")}</w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>`;
-  const types = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
-  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;
-  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>`;
-  const zip = new JSZip();
-  zip.file("[Content_Types].xml", types);
-  zip.file("_rels/.rels", rels);
-  zip.file("word/document.xml", document_);
-  zip.file("docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>EditeurCiB</Application><Company>CiB</Company></Properties>`);
-  zip.file("word/styles.xml", styles);
-  zip.file("word/numbering.xml", numbering);
-  zip.file("word/_rels/document.xml.rels", docRels);
-  return zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
-}
 $("#b-docx").addEventListener("click", async ()=>{
   if(!(await verifierChamps("exporter"))) return;
   sauver();
   if(!window.JSZip){ toast("Le module d’export .docx n’a pas pu se charger."); return; }
-  try{ proposer(nomSur()+".docx", await versDocx()); }
+  try{ proposer(nomSur()+".docx", await CiBWord.exporter(page)); }
   catch(e){ toast("La création du fichier .docx a échoué."); }
 });
 
