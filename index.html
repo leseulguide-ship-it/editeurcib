@@ -207,13 +207,52 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
   #page td,#page th{padding:2px 6px}
   #page h1,#page h2,#page h3{break-after:avoid}
 }
+/* Menu « ⋯ » */
+.menu{position:absolute;right:12px;top:52px;z-index:25;background:var(--bar);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;min-width:230px;display:flex;flex-direction:column}
+.menu button{background:none;border:0;text-align:left;padding:10px 12px;border-radius:7px;font-size:15px;color:var(--ink)}
+.menu button:hover{background:var(--hover)}
+.menu .tel-seul{display:none}
+#b-plus-outils{display:none}
 @media (max-width:600px){
-  .top{padding:8px 10px}
-  .actions .btn{padding:6px 9px;font-size:13px}
-  #editeur{padding:14px 6px 80px}
-  #page{min-height:70vh}
+  .top{padding:6px 8px;gap:6px;flex-wrap:nowrap}
+  .logo span{display:none}
+  .logo{padding:4px}
+  #titre{flex:1 1 auto;padding:6px 6px}
+  .actions{flex-wrap:nowrap}
+  .actions .btn{padding:7px 10px;font-size:14px}
+  body.ed #b-ouvrir, body.ed #b-imprimer{display:none}
+  body:not(.ed) .top{justify-content:space-between}
+  .menu .tel-seul{display:block}
+  #b-docx{font-size:0 !important}
+  #b-docx::after{content:"Exporter";font-size:14px}
+  /* Barre d'outils : essentiels sur une ligne, le reste avec « ⋯ » */
+  .outils{flex-wrap:wrap;padding:4px 6px;gap:2px;overflow:visible}
+  .groupe{padding-right:4px;margin-right:2px}
+  .outils .groupe.secondaire{display:none}
+  .outils.tout .groupe.secondaire{display:flex}
+  .outils select{max-width:118px}
+  #b-plus-outils{display:grid}
+  #editeur{padding:10px 4px 70px}
+  #page{min-height:70vh;padding:22px 16px}
   .k-desk{display:none}
+  /* Accueil : modèles sur une ligne qui défile, vos documents juste dessous (T6) */
+  #accueil{padding:18px 14px 50px}
+  .marque{margin-bottom:14px}
+  .marque img{width:48px;height:48px}
+  .sous{margin-bottom:16px}
+  .modeles{display:flex;overflow-x:auto;gap:12px;padding:4px 14px 10px;scroll-snap-type:x proximity;scroll-padding:0 14px;margin:0 -14px}
+  .modele{flex:0 0 118px;scroll-snap-align:start}
+  .modele small{display:none}
+  .modele b{font-size:14px}
+  .docs-titre{margin-top:22px}
 }
+/* Clavier du téléphone ouvert : plus de place pour le texte (T3) */
+body.clavier .top, body.clavier #etat{display:none}
+body.clavier #editeur{padding-bottom:12px}
+/* Suggestions sur téléphone : une barre au-dessus du clavier, qui ne cache pas le texte (T7) */
+#popup.barre{left:0 !important;right:0;width:100%;max-width:none;min-width:0;border-radius:0;border-left:0;border-right:0;display:flex;overflow-x:auto;gap:6px;padding:6px 8px;box-shadow:0 -2px 10px rgba(0,0,0,.12)}
+#popup.barre .item{width:auto;flex:none;border:1px solid var(--line);border-radius:18px;padding:7px 12px;white-space:nowrap;max-width:80vw;overflow:hidden;text-overflow:ellipsis}
+#popup.barre .item .k,#popup.barre .pied{display:none}
 </style>
 </head>
 <body>
@@ -223,9 +262,15 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
     <input id="titre" class="hidden" aria-label="Titre du document" placeholder="Document sans titre">
     <div class="actions">
       <button class="btn" id="b-ouvrir">Ouvrir un fichier</button>
-      <button class="btn hidden" id="b-html">Exporter .html</button>
       <button class="btn hidden" id="b-imprimer" title="Imprimer, ou enregistrer en PDF (Ctrl+P)">Imprimer / PDF</button>
       <button class="btn primary hidden" id="b-docx">Exporter .docx</button>
+      <button class="btn hidden" id="b-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Plus d’actions" title="Plus d’actions">⋯</button>
+      <button class="hidden" id="b-html" tabindex="-1" aria-hidden="true"></button>
+    </div>
+    <div id="menu" class="menu hidden" role="menu">
+      <button role="menuitem" data-clic="#b-imprimer" class="tel-seul">Imprimer / PDF</button>
+      <button role="menuitem" data-clic="#b-html">Exporter en page web (.html)</button>
+      <button role="menuitem" data-clic="#b-ouvrir" class="tel-seul">Ouvrir un fichier</button>
     </div>
     <input type="file" id="fichier" accept=".docx,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" class="hidden">
   </div>
@@ -234,7 +279,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
       <button class="ob" data-cmd="undo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
       <button class="ob" data-cmd="redo" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
     </div>
-    <div class="groupe">
+    <div class="groupe secondaire">
       <select id="style" title="Style de paragraphe">
         <option value="p">Normal</option><option value="h1">Titre 1</option><option value="h2">Titre 2</option><option value="h3">Titre 3</option>
       </select>
@@ -253,7 +298,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
       <button class="ob" data-cmd="underline" title="Souligné (Ctrl+U)"><u>S</u></button>
       <label class="couleur" title="Couleur du texte"><span>A</span><input type="color" id="couleur" value="#C0392B"></label>
     </div>
-    <div class="groupe">
+    <div class="groupe secondaire">
       <button class="ob" data-cmd="justifyLeft" title="Aligner à gauche"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
       <button class="ob" data-cmd="justifyCenter" title="Centrer"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
       <button class="ob" data-cmd="justifyRight" title="Aligner à droite"><svg viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button>
@@ -262,6 +307,9 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
     <div class="groupe">
       <button class="ob" data-cmd="insertUnorderedList" title="Liste à puces"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
       <button class="ob" data-cmd="insertOrderedList" title="Liste numérotée"><svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 5l1.5-1v5M3.5 13.5c.5-1 2.5-1 2.5.3 0 1-2.5 2.2-2.5 3.2H6"/></svg></button>
+      <button class="ob" id="b-plus-outils" title="Plus d’outils (alignement, police, taille, tableau…)" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
+    </div>
+    <div class="groupe secondaire">
       <button class="ob" id="b-saut" title="Insérer un saut de page"><svg viewBox="0 0 24 24"><path d="M6 3v5h12V3M6 21v-5h12v5"/><path d="M3 12h3M9 12h2M13 12h2M18 12h3"/></svg></button>
       <button class="ob" id="b-tableau" title="Insérer un tableau 3 × 3"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 15h16M9.5 5v14M14.5 5v14"/></svg></button>
     </div>
@@ -547,7 +595,9 @@ function montrer(vue){
   $("#titre").classList.toggle("hidden", !ed);
   $("#b-docx").classList.toggle("hidden", !ed);
   $("#b-imprimer").classList.toggle("hidden", !ed);
-  $("#b-html").classList.toggle("hidden", !ed);
+  $("#b-menu").classList.toggle("hidden", !ed);
+  document.body.classList.toggle("ed", ed);
+  fermerMenu();
   cacherPopup();
   if(!ed){ rendreAccueil(); window.scrollTo(0,0); }
 }
@@ -590,10 +640,11 @@ async function rendreAccueil(){
     l.append(nom,t,s); liste.appendChild(l);
   });
 }
-function ajusterMinis(){
-  document.querySelectorAll(".mini").forEach(m=>{ const c=m.firstElementChild; if(c) c.style.transform=`scale(${m.clientWidth/794})`; });
-}
-window.addEventListener("resize", ajusterMinis);
+// Vignettes : recalculées quand leur taille change, jamais quand l'accueil est caché (B12).
+function ajusterMini(m){ const c = m.firstElementChild; if(c && m.clientWidth > 0) c.style.transform = `scale(${m.clientWidth/794})`; }
+const obsMinis = ("ResizeObserver" in window) ? new ResizeObserver(es=>es.forEach(e=>ajusterMini(e.target))) : null;
+function ajusterMinis(){ document.querySelectorAll(".mini").forEach(m=>{ ajusterMini(m); if(obsMinis && !m.dataset.obs){ m.dataset.obs = "1"; obsMinis.observe(m); } }); }
+window.addEventListener("resize", ()=>{ if(!$("#accueil").classList.contains("hidden")) ajusterMinis(); });
 
 /* ---------- Champs à remplir ---------- */
 function selectionnerChamp(el){
@@ -836,7 +887,20 @@ function afficher(enCours){
   popup.classList.remove("hidden");
   placerPopup();
 }
+const tactile = () => matchMedia("(pointer:coarse)").matches;
 function placerPopup(){
+  // Téléphone : barre collée au-dessus du clavier.
+  if(tactile()){
+    popup.classList.add("barre");
+    const vv = window.visualViewport;
+    const bas = vv ? vv.offsetTop + vv.height : innerHeight;
+    popup.style.top = (bas - popup.offsetHeight) + "px"; popup.style.left = "0px";
+    // Le curseur reste visible au-dessus de la barre.
+    const s = getSelection();
+    if(s.rangeCount){ const rc = s.getRangeAt(0).getClientRects()[0]; if(rc && rc.bottom > bas - popup.offsetHeight - 8) window.scrollBy(0, rc.bottom - (bas - popup.offsetHeight) + 16); }
+    return;
+  }
+  popup.classList.remove("barre");
   const s = getSelection(); if(!s.rangeCount) return;
   const r = s.getRangeAt(0).cloneRange(); r.collapse(true);
   let rect = r.getClientRects()[0];
@@ -1077,32 +1141,62 @@ function enBase64(data){
   const blob = data instanceof Blob ? data : new Blob([data], {type:"text/html"});
   return new Promise((ok, ko)=>{ const r = new FileReader(); r.onload = ()=>ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(blob); });
 }
+function typeDe(nomFichier){
+  return /\.docx$/.test(nomFichier) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : /\.json$/.test(nomFichier) ? "application/json" : "text/html";
+}
+// Choix proposé sur téléphone : enregistrer directement ou envoyer.
+function choisirDestination(nomFichier){
+  return dialogue({ titre: "« " + nomFichier + " »", texte: "Que voulez-vous faire de ce fichier ?",
+    boutons: [{libelle: "Enregistrer dans le téléphone", valeur:"enregistrer", primaire:true}, {libelle:"Envoyer (WhatsApp, e-mail…)", valeur:"envoyer"}, {libelle:"Annuler", valeur:null}] });
+}
 async function proposer(nomFichier, data){
   const P = window.Capacitor && window.Capacitor.Plugins;
+  const type = typeDe(nomFichier);
+  const blob = data instanceof Blob ? data : new Blob([data], {type});
   if(!P || !P.Filesystem || !P.Share){
-    const type = /\.docx$/.test(nomFichier) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : /\.json$/.test(nomFichier) ? "application/json" : "text/html";
-    const blob = data instanceof Blob ? data : new Blob([data], {type});
-    // Sur iPhone et téléphone : menu Partager (« Enregistrer dans Fichiers », WhatsApp, e-mail…).
-    if(matchMedia("(pointer:coarse)").matches && navigator.canShare){
-      try{
-        const f = new File([blob], nomFichier, {type});
-        if(navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:nomFichier}); return; }
-      }catch(e){ if(e && e.name==="AbortError") return; }
+    // Téléphone (navigateur) : télécharger ou envoyer ; ordinateur : téléchargement direct.
+    if(tactile() && navigator.canShare){
+      let f = null; try{ f = new File([blob], nomFichier, {type}); }catch(e){}
+      if(f && navigator.canShare({files:[f]})){
+        const choix = await choisirDestination(nomFichier);
+        if(!choix) return;
+        if(choix === "envoyer"){ try{ await navigator.share({files:[f], title:nomFichier}); }catch(e){} return; }
+      }
     }
-    // Sur ordinateur : téléchargement classique.
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nomFichier;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
     toast("Fichier enregistré : " + nomFichier);
     return;
   }
+  // Version Android
+  const choix = await choisirDestination(nomFichier);
+  if(!choix) return;
+  const donnees = await enBase64(blob);
+  if(choix === "enregistrer"){
+    try{
+      const nom = await nomLibre(P.Filesystem, nomFichier);
+      await P.Filesystem.writeFile({path: "EditeurCiB/" + nom, data: donnees, directory: "DOCUMENTS", recursive: true});
+      toast("Enregistré dans Documents › EditeurCiB : " + nom);
+      return;
+    }catch(e){ toast("Enregistrement direct impossible : choisissez où l’envoyer."); }
+  }
   try{
-    await P.Filesystem.writeFile({path: nomFichier, data: await enBase64(data), directory: "CACHE"});
+    await P.Filesystem.writeFile({path: nomFichier, data: donnees, directory: "CACHE"});
     const { uri } = await P.Filesystem.getUri({path: nomFichier, directory: "CACHE"});
-    await P.Share.share({title: nomFichier, dialogTitle: "Enregistrer ou envoyer « " + nomFichier + " »", files: [uri]});
+    await P.Share.share({title: nomFichier, dialogTitle: "Envoyer « " + nomFichier + " »", files: [uri]});
   }catch(e){
     if(!/cancel/i.test(String(e && (e.message || e)))) toast("L’export n’a pas abouti.");
   }
+}
+// « Lettre.docx » existe déjà dans Documents/EditeurCiB → « Lettre (2).docx ».
+async function nomLibre(FS, nom){
+  const m = nom.match(/^(.*?)(\.[^.]+)?$/), base = m[1], ext = m[2] || "";
+  for(let i=1;i<100;i++){
+    const essai = i === 1 ? nom : base + " (" + i + ")" + ext;
+    try{ await FS.stat({path: "EditeurCiB/" + essai, directory: "DOCUMENTS"}); }catch(e){ return essai; }
+  }
+  return base + " " + Date.now() + ext;
 }
 const nomSur = () => (($("#titre").value.trim()) || "Document").replace(/[\\/:*?"<>|]+/g,"-").slice(0,80);
 
@@ -1200,6 +1294,48 @@ $("#b-imprimer").addEventListener("click", imprimer);
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p" && !$("#editeur").classList.contains("hidden")){ e.preventDefault(); imprimer(); }
 });
+
+/* ---------- Menu « ⋯ » ---------- */
+function fermerMenu(){ $("#menu").classList.add("hidden"); $("#b-menu").setAttribute("aria-expanded","false"); }
+$("#b-menu").addEventListener("click", e=>{
+  e.stopPropagation();
+  const m = $("#menu"), ouvrir = m.classList.contains("hidden");
+  m.classList.toggle("hidden", !ouvrir); $("#b-menu").setAttribute("aria-expanded", String(ouvrir));
+  if(ouvrir){ const b = $("#b-menu").getBoundingClientRect(); m.style.top = (b.bottom + 6) + "px"; const v = [...m.querySelectorAll("button")].find(x=>x.offsetParent); if(v) v.focus(); }
+});
+$("#menu").addEventListener("click", e=>{ const b = e.target.closest("[data-clic]"); if(!b) return; fermerMenu(); $(b.dataset.clic).click(); });
+document.addEventListener("click", e=>{ if(!e.target.closest("#menu")) fermerMenu(); });
+document.addEventListener("keydown", e=>{ if(e.key === "Escape" && !$("#menu").classList.contains("hidden")){ fermerMenu(); $("#b-menu").focus(); } });
+$("#b-plus-outils").addEventListener("mousedown", e=>e.preventDefault());
+$("#b-plus-outils").addEventListener("click", ()=>{ const o = $("#outils").classList.toggle("tout"); $("#b-plus-outils").setAttribute("aria-expanded", String(o)); $("#b-plus-outils").classList.toggle("on", o); });
+
+/* ---------- Clavier du téléphone : détection pour gagner de la place (T3) ---------- */
+(function(){
+  const vv = window.visualViewport; if(!vv) return;
+  let largeur = innerWidth, maxi = vv.height;
+  const maj = ()=>{
+    if(innerWidth !== largeur){ largeur = innerWidth; maxi = vv.height; }
+    maxi = Math.max(maxi, vv.height);
+    const ouvert = tactile() && vv.height < maxi - 150 && document.activeElement === page;
+    document.body.classList.toggle("clavier", ouvert);
+    if(!popup.classList.contains("hidden")) placerPopup();
+  };
+  vv.addEventListener("resize", maj); vv.addEventListener("scroll", ()=>{ if(!popup.classList.contains("hidden")) placerPopup(); });
+  page.addEventListener("focus", ()=>setTimeout(maj, 300)); page.addEventListener("blur", ()=>setTimeout(maj, 300));
+})();
+
+/* ---------- Fichier Word reçu d'une autre application (« Ouvrir avec EditeurCiB », T2) ---------- */
+function octetsDepuisBase64(b64){ const bin = atob(b64), t = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) t[i] = bin.charCodeAt(i); return t.buffer; }
+if(CibNatif && CibNatif.addListener){
+  CibNatif.addListener("fichierRecu", async r=>{
+    if(!r || r.erreur || !r.donnees){ toast("Ce fichier n’a pas pu être lu" + (r && r.erreur ? " : " + r.erreur : ".")); return; }
+    // Attendre que les documents soient prêts, et enregistrer celui en cours.
+    for(let i=0; i<50 && !Depot; i++) await new Promise(ok=>setTimeout(ok, 100));
+    if(courant) await sauver();
+    $("#apropos").classList.add("hidden"); document.querySelectorAll("body > .voile").forEach(v=>v.fermer && v.fermer(null));
+    ouvrirFichier(r.nom || "Document.docx", async ()=>octetsDepuisBase64(r.donnees));
+  });
+}
 
 const AppNatif = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
 if(AppNatif){
