@@ -190,6 +190,23 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .bascule[aria-pressed="true"] i::after{left:15px}
 #toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%);background:var(--ink);color:var(--bar);padding:9px 16px;border-radius:8px;font-size:14px;z-index:30;max-width:90vw}
 @media (prefers-reduced-motion: reduce){*{transition:none !important}}
+/* Impression / PDF : seulement la page, au format A4, sans boutons ni surlignage (B6). */
+@page{size:A4;margin:2.5cm}
+@media print{
+  :root{padding:0 !important;color-scheme:light}
+  html,body{background:#fff !important;height:auto !important}
+  body::before,header,#accueil,#etat,#popup,#toast,#alerte,.voile,#installer,#barre-sugg{display:none !important}
+  #editeur{display:block !important;padding:0 !important}
+  #page{width:auto !important;min-height:0 !important;margin:0 !important;padding:0 !important;box-shadow:none !important;border-radius:0 !important;background:#fff !important}
+  #page,#page *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #page .champ{background:none !important;border:0 !important;padding:0 !important}
+  #page hr.saut-page{border:0 !important;margin:0 !important;height:0;break-after:page;page-break-after:always}
+  #page hr.saut-page::after{content:none !important}
+  #page table.sans-bordure td,#page table.sans-bordure th{border:0 !important}
+  #page tr,#page img{break-inside:avoid}
+  #page td,#page th{padding:2px 6px}
+  #page h1,#page h2,#page h3{break-after:avoid}
+}
 @media (max-width:600px){
   .top{padding:8px 10px}
   .actions .btn{padding:6px 9px;font-size:13px}
@@ -207,6 +224,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
     <div class="actions">
       <button class="btn" id="b-ouvrir">Ouvrir un fichier</button>
       <button class="btn hidden" id="b-html">Exporter .html</button>
+      <button class="btn hidden" id="b-imprimer" title="Imprimer, ou enregistrer en PDF (Ctrl+P)">Imprimer / PDF</button>
       <button class="btn primary hidden" id="b-docx">Exporter .docx</button>
     </div>
     <input type="file" id="fichier" accept=".docx,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" class="hidden">
@@ -528,6 +546,7 @@ function montrer(vue){
   $("#etat").classList.toggle("hidden", !ed);
   $("#titre").classList.toggle("hidden", !ed);
   $("#b-docx").classList.toggle("hidden", !ed);
+  $("#b-imprimer").classList.toggle("hidden", !ed);
   $("#b-html").classList.toggle("hidden", !ed);
   cacherPopup();
   if(!ed){ rendreAccueil(); window.scrollTo(0,0); }
@@ -1160,6 +1179,28 @@ $("#b-fermer").addEventListener("click", ()=>apropos.classList.add("hidden"));
 apropos.addEventListener("click", e=>{ if(e.target===apropos) apropos.classList.add("hidden"); });
 
 /* ---------- Bouton retour et mise en arrière-plan (Android) ---------- */
+/* ---------- Imprimer / PDF (A1) ---------- */
+// Module natif de l'APK (android/.../CibNatifPlugin.java) : impression Android, qui propose aussi « Enregistrer en PDF ».
+const CibNatif = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.registerPlugin)
+  ? window.Capacitor.registerPlugin("CibNatif") : null;
+async function imprimer(){
+  if($("#editeur").classList.contains("hidden")) return;
+  if(!(await verifierChamps("imprimer"))) return;
+  cacherPopup();
+  sauver();
+  const ancien = document.title;
+  document.title = nomSur();          // nom proposé pour le fichier PDF
+  try{
+    if(CibNatif) await CibNatif.imprimer({ titre: nomSur() });
+    else window.print();
+  }catch(e){ toast("L’impression n’est pas disponible sur cet appareil. Exportez en .docx puis imprimez-le."); }
+  setTimeout(()=>{ document.title = ancien; }, 1000);
+}
+$("#b-imprimer").addEventListener("click", imprimer);
+document.addEventListener("keydown", e=>{
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p" && !$("#editeur").classList.contains("hidden")){ e.preventDefault(); imprimer(); }
+});
+
 const AppNatif = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
 if(AppNatif){
   AppNatif.addListener("backButton", ()=>{
@@ -1201,9 +1242,9 @@ if("serviceWorker" in navigator && !window.Capacitor && (location.protocol === "
 // Accès réservé aux tests automatiques (aucun effet pour l’utilisateur).
 window.EditeurCiB = { depot: ()=>Depot, sauver, onglet: ONGLET };
 montrer("accueil");
-CiBStockage.ouvrir().then(d=>{ Depot = d; }, ()=>{ Depot = CiBStockage._depotMemoire(); }).then(()=>{
+CiBStockage.ouvrir().then(d=>{ Depot = d; }, ()=>{ Depot = CiBStockage._depotMemoire(); }).then(async ()=>{
+  if($("#editeur").classList.contains("hidden")) await rendreAccueil(); else if(courant) sauver();
   document.documentElement.dataset.pret = "1";
-  if($("#editeur").classList.contains("hidden")) rendreAccueil(); else if(courant) sauver();
 });
 })();
 </script>

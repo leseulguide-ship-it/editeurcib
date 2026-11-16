@@ -2,11 +2,12 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 import { demarrer, modele, telecharger, choisirFichier, SORTIES } from "./outils.mjs";
 import { fabriquerDocx } from "./fabriquer-docx.mjs";
 
 let E, PROPOSITION;
-before(async () => { E = await demarrer(); PROPOSITION = await fabriquerDocx(join(SORTIES, "Proposition-test.docx")); });
+before(async () => { E = await demarrer(); mkdirSync(join(SORTIES, "source"), { recursive: true }); PROPOSITION = await fabriquerDocx(join(SORTIES, "source", "Proposition-test.docx")); });
 after(async () => { await E.fin(); });
 
 // Ouvre le .docx dans le navigateur : vérifie que chaque partie XML est bien formée et renvoie leur contenu.
