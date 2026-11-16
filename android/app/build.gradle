@@ -41,6 +41,16 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        // Version d'essai pour un vrai téléphone : s'installe À CÔTÉ de la version normale
+        // (autre identifiant, nom « EditeurCiB essai », documents séparés). Signée avec la clé de test
+        // de l'ordinateur, jamais avec la clé CiB. Construction : gradlew assembleEssai
+        essai {
+            initWith debug
+            applicationIdSuffix ".essai"
+            versionNameSuffix "-essai"
+            debuggable false
+            matchingFallbacks = ['debug']
+        }
     }
 }
 

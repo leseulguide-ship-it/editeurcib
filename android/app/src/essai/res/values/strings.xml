@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Nom affiché par la version d'essai (variante « essai » de android/app/build.gradle). -->
+<resources>
+    <string name="app_name">EditeurCiB essai</string>
+    <string name="title_activity_main">EditeurCiB essai</string>
+</resources>
