@@ -134,6 +134,12 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .boite p{line-height:1.5;font-size:14.5px}
 .boite .auteur{margin:16px 0 20px;padding-top:14px;border-top:1px solid var(--line)}
 
+.boite.dlg{text-align:left;max-width:440px}
+.boite.dlg h2{margin:0 0 8px;font-size:20px}
+.dlg-boutons{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:18px}
+.dlg-champs{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}
+.dlg-champ{border:1px dashed var(--champ-line);background:var(--champ);color:#3D3310;border-radius:6px;padding:5px 8px;font-size:14px;text-align:left}
+.dlg-plus{color:var(--ink-soft);font-size:14px;align-self:center}
 .installer{display:flex;align-items:center;gap:12px;background:var(--bar);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 12px 12px 14px;margin:0 0 26px}
 .installer img{border-radius:9px;flex:none;box-shadow:0 0 0 1px var(--line)}
 .installer p{margin:0;flex:1;font-size:14px;line-height:1.45}
@@ -149,8 +155,9 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 #page td,#page th{border:1px solid #9AA3B2;padding:5px 8px;vertical-align:top;min-width:40px}
 #page ul,#page ol{margin:0 0 .5em;padding-left:1.6em}
 #page img{max-width:100%}
-.champ{background:var(--champ);border-bottom:1px dashed var(--champ-line);border-radius:2px;padding:0 1px;color:#5A4A12}
-.mini-contenu .champ{color:#5A4A12}
+/* Champ à remplir : fond en « background-image » et couleur du texte inchangée, pour que le clavier
+   du téléphone ne recopie pas ce style sur le texte tapé à la place du champ (B4). */
+.champ{background-image:linear-gradient(var(--champ),var(--champ));border-bottom:1px dashed var(--champ-line);border-radius:2px;padding:0 1px}
 .mini-contenu{font-family:"Times New Roman",Tinos,serif;font-size:12pt;line-height:1.45;color:#1D1F24;padding:95px}
 .mini-contenu p{margin:0 0 .45em}
 .mini-contenu h1{font-size:18pt;margin:.4em 0 .5em}
@@ -298,7 +305,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 const $ = s => document.querySelector(s);
 const page = $("#page");
 const dateFr = () => new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
-const champ = t => `<span class="champ">[${t}]</span>`;
+const champ = t => `<span class="champ" spellcheck="false">[${t}]</span>`;
 const sansAccent = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 function lire(cle, defaut){ try{ const v = localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; }catch(e){ return defaut; } }
 function ecrire(cle, val){ try{ localStorage.setItem(cle, JSON.stringify(val)); return true; }catch(e){ return false; } }
@@ -446,6 +453,7 @@ function ouvrirDoc(id, titre, html, maj){
   versions[id] = maj || 0;
   $("#titre").value = titre;
   page.innerHTML = html;
+  page.querySelectorAll(".champ").forEach(c=>c.setAttribute("spellcheck","false"));
   montrer("editeur");
   if(!maj) sauver(); else etatEnreg("ok");
   compter();
@@ -575,14 +583,67 @@ function champSuivant(){
   if(suivant){ selectionnerChamp(suivant); return true; }
   return false;
 }
-function nettoyerChamps(){
+const CHAMP_VIDE = /^\[[^\]]*\]$/;
+const COULEUR_CHAMP = /^(#5a4a12|rgb\(90,\s*74,\s*18\))$/i, FOND_CHAMP = /rgb\(252,\s*239,\s*196\)|#fcefc4/i;
+let saisieEnCours = false; // composition du clavier du téléphone : ne pas toucher au texte pendant ce temps
+// Garde le curseur à sa place pendant qu'on réorganise le texte autour de lui.
+function garderCurseur(fn){
+  const s = getSelection();
+  const a = s.rangeCount ? [s.anchorNode, s.anchorOffset, s.focusNode, s.focusOffset] : null;
+  fn();
+  if(a && a[0] && a[0].isConnected && a[2] && a[2].isConnected && getSelection().anchorNode !== a[0]){
+    try{ s.setBaseAndExtent(a[0], a[1], a[2], a[3]); }catch(e){}
+  }
+}
+function nettoyerChamps(){ garderCurseur(nettoyerChamps_); }
+function nettoyerChamps_(){
   page.querySelectorAll(".champ").forEach(c=>{
     const t = c.textContent;
     if(!t){ c.remove(); return; }
-    if(!/^\[[^\]]*\]$/.test(t)) c.classList.remove("champ");
+    if(CHAMP_VIDE.test(t)){
+      // Espace insécable laissée par le navigateur juste après un champ : redevient une espace normale.
+      const n = c.nextSibling;
+      if(n && n.nodeType === 3 && /^\u00a0\S/.test(n.data)) n.replaceData(0, 1, " ");
+      return;
+    }
+    const m = t.match(/^([^\[]*)(\[[^\]]*\])([^]*)$/);
+    if(m && (m[1] || m[3])) sortirDuChamp(c, m); else c.replaceWith(...c.childNodes);
   });
-  page.querySelectorAll("span:not([class]):not([style])").forEach(sp=>{ sp.replaceWith(...sp.childNodes); });
+  // Style recopié par certains claviers en remplaçant un champ (B4) : on le retire.
+  page.querySelectorAll("font[color]").forEach(f=>{ if(COULEUR_CHAMP.test(f.getAttribute("color"))) f.removeAttribute("color"); });
+  page.querySelectorAll("font:not([color]):not([face]):not([size])").forEach(f=>f.replaceWith(...f.childNodes));
+  page.querySelectorAll("[style]").forEach(el=>{
+    if(FOND_CHAMP.test(el.style.backgroundColor)) el.style.backgroundColor = "";
+    if(COULEUR_CHAMP.test(el.style.color)) el.style.color = "";
+    if(!el.getAttribute("style").trim()) el.removeAttribute("style");
+  });
+  page.querySelectorAll("span:not([style])").forEach(sp=>{ if(!sp.className) sp.replaceWith(...sp.childNodes); });
 }
+// Texte tapé juste avant ou après un champ (B3) : il sort du champ, le curseur reste au même endroit.
+function sortirDuChamp(c, m){
+  const s = getSelection();
+  let pos = -1;
+  if(s.rangeCount && c.contains(s.anchorNode)){
+    const r = document.createRange(); r.selectNodeContents(c); r.setEnd(s.anchorNode, s.anchorOffset);
+    pos = r.toString().length;
+  }
+  // L'espace insécable mis par le navigateur en fin de champ redevient une espace normale.
+  m[1] = m[1].replace(/\u00a0$/, " "); m[3] = m[3].replace(/^\u00a0(?=\S)/, " ");
+  const avant = m[1] ? document.createTextNode(m[1]) : null, apres = m[3] ? document.createTextNode(m[3]) : null;
+  c.textContent = m[2];
+  if(avant) c.before(avant);
+  if(apres) c.after(apres);
+  if(pos < 0) return;
+  const r = document.createRange();
+  if(avant && pos <= m[1].length) r.setStart(avant, pos);
+  else if(apres && pos >= m[1].length + m[2].length) r.setStart(apres, pos - m[1].length - m[2].length);
+  else r.setStart(c.firstChild, Math.min(Math.max(0, pos - m[1].length), m[2].length));
+  r.collapse(true); s.removeAllRanges(); s.addRange(r);
+}
+// Champs encore à remplir (texte entre crochets).
+const champsRestants = () => [...page.querySelectorAll(".champ")].filter(c=>CHAMP_VIDE.test(c.textContent));
+page.addEventListener("compositionstart", ()=>{ saisieEnCours = true; });
+page.addEventListener("compositionend", ()=>{ saisieEnCours = false; setTimeout(()=>{ if(!saisieEnCours){ nettoyerChamps(); sauverBientot(); } }, 0); });
 page.addEventListener("click", e=>{
   const c = e.target.closest && e.target.closest(".champ");
   if(c && getSelection().isCollapsed) selectionnerChamp(c);
@@ -783,7 +844,7 @@ page.addEventListener("input", e=>{
     const c = infoCurseur();
     if(c){ const ws = tokens(c.avant.slice(0,-1)); if(ws.length) apprendreMot(ws.length>1?ws[ws.length-2]:"", ws[ws.length-1]); }
   }
-  nettoyerChamps();
+  if(!e.isComposing && !saisieEnCours) nettoyerChamps();
   sauverBientot(); compter();
   if(e.inputType && e.inputType.startsWith("insert")) calculer(); else cacherPopup();
 });
@@ -953,7 +1014,8 @@ async function proposer(nomFichier, data){
 }
 const nomSur = () => (($("#titre").value.trim()) || "Document").replace(/[\\/:*?"<>|]+/g,"-").slice(0,80);
 
-$("#b-html").addEventListener("click", ()=>{
+$("#b-html").addEventListener("click", async ()=>{
+  if(!(await verifierChamps("exporter"))) return;
   sauver();
   const corps = page.innerHTML.replace(/ class="champ"/g,"");
   const doc = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${nomSur()}</title><style>body{max-width:16cm;margin:2.5cm auto;font-family:"Times New Roman",serif;font-size:12pt;line-height:1.45}p{margin:0 0 .45em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}@page{size:A4;margin:2.5cm}</style></head><body>${corps}</body></html>`;
@@ -1093,11 +1155,62 @@ async function versDocx(){
   return zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
 }
 $("#b-docx").addEventListener("click", async ()=>{
+  if(!(await verifierChamps("exporter"))) return;
   sauver();
   if(!window.JSZip){ toast("Le module d’export .docx n’a pas pu se charger."); return; }
   try{ proposer(nomSur()+".docx", await versDocx()); }
   catch(e){ toast("La création du fichier .docx a échoué."); }
 });
+
+/* ---------- Boîte de dialogue ---------- */
+// dialogue({titre, texte, contenu (élément), boutons:[{libelle, valeur, primaire}]}) → promesse de la valeur choisie (null si fermée).
+function dialogue(o){
+  return new Promise(fin=>{
+    const voile = document.createElement("div"); voile.className = "voile"; voile.setAttribute("role","dialog"); voile.setAttribute("aria-modal","true");
+    const boite = document.createElement("div"); boite.className = "boite dlg";
+    const h = document.createElement("h2"); h.textContent = o.titre; boite.appendChild(h);
+    if(o.texte){ const p = document.createElement("p"); p.textContent = o.texte; boite.appendChild(p); }
+    if(o.contenu) boite.appendChild(o.contenu);
+    const pied = document.createElement("div"); pied.className = "dlg-boutons";
+    const fermer = v=>{ document.removeEventListener("keydown", clavier, true); voile.remove(); fin(v); };
+    const clavier = e=>{ if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); fermer(null); } };
+    (o.boutons||[]).forEach(b=>{
+      const bt = document.createElement("button"); bt.className = "btn" + (b.primaire ? " primary" : ""); bt.textContent = b.libelle;
+      if(b.valeur) bt.dataset.valeur = b.valeur;
+      bt.addEventListener("click", ()=>fermer(b.valeur)); pied.appendChild(bt);
+    });
+    boite.appendChild(pied); voile.appendChild(boite);
+    voile.addEventListener("click", e=>{ if(e.target === voile) fermer(null); });
+    voile.fermer = fermer;
+    document.addEventListener("keydown", clavier, true);
+    document.body.appendChild(voile);
+    const prim = pied.querySelector(".primary") || pied.querySelector("button"); if(prim) prim.focus();
+  });
+}
+
+/* Avant d’exporter ou d’imprimer : prévenir s’il reste des champs [à remplir] (A2). */
+async function verifierChamps(action){
+  const restants = champsRestants();
+  if(!restants.length) return true;
+  const n = restants.length;
+  const liste = document.createElement("div"); liste.className = "dlg-champs";
+  let choisi = null;
+  restants.slice(0, 12).forEach(c=>{
+    const b = document.createElement("button"); b.className = "dlg-champ"; b.textContent = c.textContent;
+    b.addEventListener("click", ()=>{ choisi = c; liste.closest(".voile").fermer("aller"); });
+    liste.appendChild(b);
+  });
+  if(n > 12){ const p = document.createElement("span"); p.className = "dlg-plus"; p.textContent = "et " + (n-12) + " autre" + (n-12>1?"s":"") + "…"; liste.appendChild(p); }
+  const verbe = action === "imprimer" ? "Imprimer" : "Exporter";
+  const r = await dialogue({
+    titre: n > 1 ? "Il reste " + n + " champs à remplir" : "Il reste 1 champ à remplir",
+    texte: "Ces passages entre crochets apparaîtront tels quels dans le document. Touchez-en un pour le remplir.",
+    contenu: liste,
+    boutons: [{libelle:"Remplir les champs", valeur:"aller", primaire:true}, {libelle: verbe + " quand même", valeur:"continuer"}, {libelle:"Annuler", valeur:null}]
+  });
+  if(r === "aller"){ const c = choisi || restants[0]; page.focus(); selectionnerChamp(c); return false; }
+  return r === "continuer";
+}
 
 /* ---------- À propos ---------- */
 const apropos = $("#apropos");
