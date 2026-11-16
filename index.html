@@ -260,7 +260,10 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
   .outils select{max-width:118px}
   #b-plus-outils{display:grid}
   #editeur{padding:10px 4px 70px}
-  #page{min-height:70vh;padding:22px 16px}
+  #page{min-height:70vh;padding:22px 16px;overflow-x:auto}
+  /* Tableaux (devis, factures) lisibles sur un écran étroit */
+  #page table{font-size:10.5pt;table-layout:fixed}
+  #page td,#page th{padding:3px 4px;min-width:0;overflow-wrap:anywhere;word-break:normal}
   .k-desk{display:none}
   /* Accueil : modèles sur une ligne qui défile, vos documents juste dessous (T6) */
   #accueil{padding:18px 14px 50px}

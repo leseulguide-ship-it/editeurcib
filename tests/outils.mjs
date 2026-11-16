@@ -10,13 +10,13 @@ export const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const SORTIES = join(RACINE, "tests", "sorties");
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript", ".css": "text/css", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json", ".webmanifest": "application/manifest+json" };
 
-export function serveur() {
+export function serveur(racine = RACINE) {
   return new Promise(ok => {
     const srv = http.createServer(async (req, res) => {
       let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
       if (p.endsWith("/")) p += "index.html";
       try {
-        const d = await readFile(join(RACINE, p));
+        const d = await readFile(join(racine, p));
         res.writeHead(200, { "content-type": TYPES[extname(p)] || "application/octet-stream", "cache-control": "no-store" });
         res.end(d);
       } catch { res.writeHead(404); res.end(); }

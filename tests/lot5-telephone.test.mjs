@@ -149,3 +149,13 @@ test("T2 : un .docx reçu d’une autre application (« Ouvrir avec ») s’ouvr
   assert.match(await p.locator("#toast").innerText(), /trop volumineux/);
   await ctx.close();
 });
+
+test("téléphone : le tableau d’un devis tient dans la largeur de l’écran", async () => {
+  const p = await E.page(null, TEL);
+  await p.locator(".modele", { has: p.locator(":scope > b", { hasText: /^Devis$/ }) }).click();
+  await p.evaluate(() => { const q = document.querySelectorAll('#page [data-calc="qte"]'), pu = document.querySelectorAll('#page [data-calc="pu"]'); q[0].textContent = "1200"; pu[0].textContent = "25 000"; document.querySelector("#page").dispatchEvent(new Event("input")); });
+  await pause(500);
+  const r = await p.evaluate(() => { const t = document.querySelector("#page table").getBoundingClientRect(), pg = document.querySelector("#page").getBoundingClientRect(); return { droite: t.right, page: pg.right, ttc: document.querySelector('#page [data-calc="ttc"]').getBoundingClientRect().right }; });
+  assert.ok(r.droite <= r.page + 1 && r.ttc <= r.page, JSON.stringify(r));
+  await p.context().close();
+});
