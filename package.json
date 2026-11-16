@@ -6,7 +6,8 @@
   "scripts": {
     "preparer": "node scripts/preparer-android.mjs",
     "sync": "npm run preparer && npx cap sync android",
-    "apk": "npm run sync && cd android && ./gradlew assembleRelease"
+    "apk": "npm run sync && cd android && ./gradlew assembleRelease",
+    "test": "node --test --test-concurrency=1 \"tests/*.test.mjs\""
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
@@ -16,6 +17,8 @@
     "@capacitor/share": "8.0.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3"
+    "@capacitor/cli": "8.5.3",
+    "jszip": "3.10.1",
+    "playwright-core": "1.56.1"
   }
 }

@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="fonts/polices.css">
 <script src="lib/jszip.min.js"></script>
 <script src="lib/mammoth.browser.min.js"></script>
+<script src="js/stockage.js"></script>
 <style>
 :root{
   --desk:#E3E7EE; --bar:#FFFFFF; --ink:#1B2A4A; --ink-soft:#56627C; --line:#CBD2DE;
@@ -105,6 +106,15 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .suppr:hover{background:var(--hover);color:#C0392B}
 .suppr.confirmer{color:#C0392B;font-weight:600}
 .vide{padding:20px 16px;color:var(--ink-soft)}
+.docs-actions{display:flex;gap:16px;font-size:14px}
+.avert{background:#FFF4E5;color:#7A3B00;border:1px solid #F0B37A;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14px;line-height:1.45}
+/* Alerte très visible quand un enregistrement échoue */
+#alerte{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:45;width:min(560px,calc(100vw - 24px));background:#B3261E;color:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.35);font-size:15px}
+#alerte.info{background:#0B5D78}
+#alerte p{margin:0 0 10px;line-height:1.45;font-weight:600}
+.alerte-boutons{display:flex;gap:8px;flex-wrap:wrap}
+#alerte .btn{background:#fff;color:#1B2A4A;border-color:#fff}
+#enreg.erreur{color:#B3261E;font-weight:700}
 
 /* Marque CiB */
 .marque{display:flex;align-items:center;gap:14px;margin:0 0 28px}
@@ -239,8 +249,12 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
   <h1>Que voulez-vous écrire ?</h1>
   <p class="sous">Choisissez un type de texte : la mise en page est prête, il ne reste qu’à remplir les champs surlignés. Touchez un champ pour le remplacer, ou utilisez Tab pour passer au suivant.</p>
   <div class="modeles" id="modeles"></div>
-  <div class="docs-titre"><span>Vos documents</span></div>
-  <div class="liste" id="liste"></div>
+  <div class="docs-titre"><span>Vos documents</span>
+    <span class="docs-actions"><button class="lien" id="b-sauvegarder" title="Enregistrer tous vos documents dans un seul fichier, à garder en lieu sûr">Sauvegarder tout</button><button class="lien" id="b-restaurer" title="Reprendre les documents d’un fichier de sauvegarde">Restaurer</button></span>
+  </div>
+  <div id="memoire-seule" class="avert hidden">Ce navigateur ne permet pas de garder vos documents après sa fermeture. Pensez à « Sauvegarder tout » avant de quitter.</div>
+  <div class="liste" id="liste"><div class="vide">Chargement de vos documents…</div></div>
+  <input type="file" id="fichier-sauvegarde" accept=".json,application/json" class="hidden">
   <footer class="credit">
     <span>EditeurCiB · Créé par <strong>Mathias Pascal Ikeng</strong></span>
     <button class="lien" id="b-apropos">À propos</button>
@@ -266,6 +280,11 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
   <span id="compte">0 mot</span>
   <span id="enreg">Enregistré sur cet appareil</span>
   <button class="bascule" id="b-sugg" aria-pressed="true"><i></i>Suggestions</button>
+</div>
+
+<div id="alerte" class="hidden" role="alert">
+  <p id="alerte-texte"></p>
+  <div class="alerte-boutons"><button class="btn" id="b-alerte-reessayer">Réessayer</button><button class="btn" id="b-alerte-fichier">Sauvegarder dans un fichier</button><button class="btn hidden" id="b-alerte-fermer">Fermer</button></div>
 </div>
 
 <div id="popup" class="hidden" role="listbox"></div>
@@ -337,27 +356,150 @@ const MODELES = [
 ];
 
 /* ---------- Documents enregistrés ---------- */
-let docs = lire("cib:docs", {});
-let courant = null;
-function sauver(){
-  if(!courant) return;
-  docs[courant] = { titre: ($("#titre").value.trim() || "Document sans titre"), html: page.innerHTML, maj: Date.now() };
-  $("#enreg").textContent = ecrire("cib:docs", docs) ? "Enregistré sur cet appareil" : "Enregistrement local indisponible";
-}
-let sauverT;
-function sauverBientot(){ $("#enreg").textContent = "Modifications…"; clearTimeout(sauverT); sauverT = setTimeout(sauver, 1200); }
+/* Chaque document est enregistré à part (IndexedDB, ou fichiers natifs sous Android : voir js/stockage.js).
+   Enregistrement automatique peu après chaque modification, à la sortie de l’éditeur,
+   quand l’application passe en arrière-plan et avant la fermeture de la page. */
+let Depot = null;
+const ONGLET = Math.random().toString(36).slice(2, 10);
+const versions = {};          // date de la version connue de chaque document dans cet onglet
+let courant = null, modifie = false, enErreur = false;
+let fileSauver = Promise.resolve(true), sauverT, reessaiT;
+const nouvelId = () => "d" + Date.now() + Math.random().toString(36).slice(2, 6);
+const titreDoc = () => $("#titre").value.trim() || "Document sans titre";
+const canal = ("BroadcastChannel" in window) ? new BroadcastChannel("editeurcib") : null;
 
-function ouvrirDoc(id, titre, html){
-  courant = id;
+function instantane(){ return { id: courant, titre: titreDoc(), html: page.innerHTML, maj: Date.now(), onglet: ONGLET }; }
+function sauver(){
+  clearTimeout(sauverT);
+  if(!courant || !Depot) return fileSauver;
+  const doc = instantane();
+  modifie = false;
+  fileSauver = fileSauver.then(()=>ecrireDoc(doc), ()=>ecrireDoc(doc));
+  return fileSauver;
+}
+async function ecrireDoc(doc){
+  try{
+    const existant = await Depot.lire(doc.id);
+    if(existant && existant.onglet && existant.onglet !== ONGLET && (existant.maj||0) > (versions[doc.id]||0)){
+      // Le même document a été modifié dans un autre onglet : on garde les deux versions.
+      const copie = Object.assign({}, doc, { id: nouvelId(), titre: doc.titre + " (copie)" });
+      await Depot.ecrire(copie);
+      versions[copie.id] = copie.maj;
+      if(courant === doc.id){ courant = copie.id; $("#titre").value = copie.titre; }
+      montrerAlerte("Ce document a aussi été modifié dans un autre onglet. Pour ne rien perdre, votre version est enregistrée sous « " + copie.titre + " ».", "info");
+    } else {
+      await Depot.ecrire(doc);
+      versions[doc.id] = doc.maj;
+    }
+    if(enErreur){ enErreur = false; cacherAlerte(); toast("Votre travail est de nouveau enregistré."); }
+    clearTimeout(reessaiT);
+    if(!modifie) etatEnreg("ok");
+    if(canal) canal.postMessage({type:"maj", id: doc.id, onglet: ONGLET});
+    return true;
+  }catch(e){
+    modifie = true; enErreur = true;
+    etatEnreg("erreur");
+    montrerAlerte("⚠ Votre travail n’a pas pu être enregistré sur cet appareil. Ne fermez pas cette page : réessayez, ou sauvegardez vos documents dans un fichier.");
+    clearTimeout(reessaiT); reessaiT = setTimeout(sauver, 5000);
+    return false;
+  }
+}
+function etatEnreg(e){
+  const el = $("#enreg");
+  el.classList.toggle("erreur", e === "erreur");
+  el.textContent = e === "ok" ? (Depot && Depot.type === "memoire" ? "Gardé jusqu’à la fermeture" : "Enregistré sur cet appareil")
+    : e === "erreur" ? "⚠ Non enregistré" : "Modifications…";
+}
+function sauverBientot(){ modifie = true; if(!enErreur) etatEnreg("attente"); clearTimeout(sauverT); sauverT = setTimeout(sauver, 800); }
+
+// Copie de secours immédiate (synchrone) si la page se ferme avant la fin de l’enregistrement.
+function copieSecours(){
+  if(!courant || !modifie) return;
+  try{ localStorage.setItem("cib:secours", JSON.stringify(instantane())); }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "hidden"){ copieSecours(); sauver(); } });
+window.addEventListener("pagehide", ()=>{ copieSecours(); sauver(); });
+window.addEventListener("beforeunload", e=>{ if(modifie || enErreur){ copieSecours(); sauver(); if(enErreur){ e.preventDefault(); e.returnValue = ""; } } });
+if(canal) canal.onmessage = ev=>{
+  const m = ev.data || {};
+  if(m.type !== "maj" || m.onglet === ONGLET) return;
+  if(!$("#accueil").classList.contains("hidden")) rendreAccueil();
+};
+
+/* Alerte visible (erreur d’enregistrement, conflit entre onglets) */
+function montrerAlerte(texte, genre){
+  const a = $("#alerte");
+  $("#alerte-texte").textContent = texte;
+  a.classList.toggle("info", genre === "info");
+  $("#b-alerte-reessayer").classList.toggle("hidden", genre === "info");
+  $("#b-alerte-fichier").classList.toggle("hidden", genre === "info");
+  $("#b-alerte-fermer").classList.toggle("hidden", genre !== "info");
+  a.classList.remove("hidden");
+}
+function cacherAlerte(){ $("#alerte").classList.add("hidden"); }
+$("#b-alerte-reessayer").addEventListener("click", ()=>{ etatEnreg("attente"); sauver(); });
+$("#b-alerte-fermer").addEventListener("click", cacherAlerte);
+$("#b-alerte-fichier").addEventListener("click", ()=>sauvegarderTout());
+
+function ouvrirDoc(id, titre, html, maj){
+  courant = id; modifie = false;
+  versions[id] = maj || 0;
   $("#titre").value = titre;
   page.innerHTML = html;
   montrer("editeur");
-  sauver(); compter();
+  if(!maj) sauver(); else etatEnreg("ok");
+  compter();
   const premier = page.querySelector(".champ");
   page.focus();
   if(premier) selectionnerChamp(premier); else placerFin();
 }
-function nouveauDepuis(m){ ouvrirDoc("d"+Date.now(), m.titre, m.html()); }
+async function ouvrirExistant(id){
+  let d = null;
+  try{ d = await Depot.lire(id); }catch(e){}
+  if(!d){ toast("Ce document n’a pas pu être ouvert."); rendreAccueil(); return; }
+  ouvrirDoc(d.id, d.titre, d.html, d.maj || 1);
+}
+function nouveauDepuis(m){ ouvrirDoc(nouvelId(), m.titre, m.html()); }
+async function quitterEditeur(){
+  // On ne quitte pas l’éditeur tant que le document n’est pas enregistré (l’alerte reste affichée).
+  if(courant && !(await sauver())) return;
+  courant = null; montrer("accueil");
+}
+
+/* Sauvegarde de tous les documents dans un fichier, et restauration */
+async function sauvegarderTout(){
+  try{
+    if(courant) await sauver();
+    let texte;
+    try{ texte = await CiBStockage.exporterTout(Depot, {}); }
+    catch(e){ texte = null; }
+    // Même si l’appareil refuse d’enregistrer, le document ouvert est inclus dans le fichier.
+    if(courant){
+      const d = JSON.parse(texte || '{"application":"EditeurCiB","format":1,"documents":[]}');
+      d.date = d.date || new Date().toISOString();
+      const ici = instantane(); delete ici.onglet;
+      d.documents = d.documents.filter(x=>x.id !== ici.id).concat([ici]);
+      texte = JSON.stringify(d);
+    }
+    if(!texte) throw new Error("vide");
+    const jour = new Date().toLocaleDateString("fr-FR").replace(/\//g,"-");
+    await proposer("Sauvegarde EditeurCiB " + jour + ".json", new Blob([texte], {type:"application/json"}));
+  }catch(e){ toast("La sauvegarde n’a pas pu être créée."); }
+}
+$("#b-sauvegarder").addEventListener("click", sauvegarderTout);
+$("#b-restaurer").addEventListener("click", ()=>$("#fichier-sauvegarde").click());
+$("#fichier-sauvegarde").addEventListener("change", async e=>{
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  try{
+    const r = await CiBStockage.importerTout(Depot, await f.text());
+    if(canal) canal.postMessage({type:"maj", onglet: ONGLET});
+    await rendreAccueil();
+    toast(r.ajoutes ? (r.ajoutes + (r.ajoutes>1 ? " documents restaurés" : " document restauré") + (r.aJour ? " (" + r.aJour + " déjà à jour)" : "") + ".")
+      : "Tous les documents de ce fichier sont déjà à jour.");
+  }catch(err){
+    toast(err && err.message === "format" ? "Ce fichier n’est pas une sauvegarde EditeurCiB." : "Ce fichier de sauvegarde n’a pas pu être lu.");
+  }
+});
 
 function montrer(vue){
   const ed = vue === "editeur";
@@ -372,7 +514,8 @@ function montrer(vue){
   if(!ed){ rendreAccueil(); window.scrollTo(0,0); }
 }
 
-function rendreAccueil(){
+let jetonAccueil = 0;
+async function rendreAccueil(){
   const grille = $("#modeles");
   if(!grille.children.length){
     MODELES.forEach(m=>{
@@ -384,21 +527,27 @@ function rendreAccueil(){
     });
     ajusterMinis();
   }
+  if(!Depot) return;
   const liste = $("#liste");
-  const ids = Object.keys(docs).sort((a,b)=>docs[b].maj-docs[a].maj);
+  $("#memoire-seule").classList.toggle("hidden", Depot.type !== "memoire");
+  const jeton = ++jetonAccueil;
+  let metas = [];
+  try{ metas = await Depot.liste(); }catch(e){ metas = []; }
+  if(jeton !== jetonAccueil) return;
+  metas.sort((a,b)=>(b.maj||0)-(a.maj||0));
   liste.innerHTML = "";
-  if(!ids.length){ liste.innerHTML = `<div class="vide">Aucun document pour l’instant. Choisissez un modèle ci-dessus pour commencer.</div>`; return; }
-  ids.forEach(id=>{
-    const d = docs[id];
+  if(!metas.length){ liste.innerHTML = `<div class="vide">Aucun document pour l’instant. Choisissez un modèle ci-dessus pour commencer.</div>`; return; }
+  metas.forEach(d=>{
+    const id = d.id;
     const l = document.createElement("div"); l.className = "ligne";
     const nom = document.createElement("button"); nom.className="nom"; nom.textContent = d.titre;
-    nom.addEventListener("click", ()=>ouvrirDoc(id, d.titre, d.html));
+    nom.addEventListener("click", ()=>ouvrirExistant(id));
     const t = document.createElement("time");
     t.textContent = new Date(d.maj).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
     const s = document.createElement("button"); s.className="suppr"; s.textContent="Supprimer";
     s.addEventListener("click", ()=>{
       if(!s.classList.contains("confirmer")){ s.classList.add("confirmer"); s.textContent="Confirmer"; setTimeout(()=>{s.classList.remove("confirmer"); s.textContent="Supprimer";},3000); return; }
-      delete docs[id]; ecrire("cib:docs", docs); rendreAccueil();
+      Depot.supprimer(id).catch(()=>toast("Ce document n’a pas pu être supprimé.")).then(()=>{ if(canal) canal.postMessage({type:"maj", onglet: ONGLET}); rendreAccueil(); });
     });
     l.append(nom,t,s); liste.appendChild(l);
   });
@@ -736,7 +885,7 @@ $("#b-tableau").addEventListener("click", ()=>{
   sauverBientot();
 });
 $("#titre").addEventListener("input", sauverBientot);
-$("#vers-accueil").addEventListener("click", ()=>{ if(courant) sauver(); montrer("accueil"); });
+$("#vers-accueil").addEventListener("click", ()=>{ if(courant) quitterEditeur(); else montrer("accueil"); });
 
 function compter(){
   const n = (page.innerText.replace(/\[[^\]]*\]/g," ").match(/[\p{L}\p{N}’'-]+/gu)||[]).length;
@@ -778,7 +927,7 @@ function enBase64(data){
 async function proposer(nomFichier, data){
   const P = window.Capacitor && window.Capacitor.Plugins;
   if(!P || !P.Filesystem || !P.Share){
-    const type = /\.docx$/.test(nomFichier) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "text/html";
+    const type = /\.docx$/.test(nomFichier) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : /\.json$/.test(nomFichier) ? "application/json" : "text/html";
     const blob = data instanceof Blob ? data : new Blob([data], {type});
     // Sur iPhone et téléphone : menu Partager (« Enregistrer dans Fichiers », WhatsApp, e-mail…).
     if(matchMedia("(pointer:coarse)").matches && navigator.canShare){
@@ -962,10 +1111,11 @@ if(AppNatif){
   AppNatif.addListener("backButton", ()=>{
     if(!apropos.classList.contains("hidden")){ apropos.classList.add("hidden"); return; }
     if(!popup.classList.contains("hidden")){ cacherPopup(); return; }
-    if(!$("#editeur").classList.contains("hidden")){ if(courant) sauver(); montrer("accueil"); }
+    if(!$("#editeur").classList.contains("hidden")) quitterEditeur();
     else AppNatif.exitApp();
   });
-  AppNatif.addListener("pause", ()=>{ if(courant) sauver(); });
+  AppNatif.addListener("pause", ()=>{ if(courant){ copieSecours(); sauver(); } });
+  AppNatif.addListener("resume", ()=>{ if(enErreur) sauver(); });
 }
 
 /* ---------- Application installable (hors version Android) ---------- */
@@ -994,7 +1144,13 @@ if("serviceWorker" in navigator && !window.Capacitor && (location.protocol === "
 })();
 
 /* ---------- Démarrage ---------- */
+// Accès réservé aux tests automatiques (aucun effet pour l’utilisateur).
+window.EditeurCiB = { depot: ()=>Depot, sauver, onglet: ONGLET };
 montrer("accueil");
+CiBStockage.ouvrir().then(d=>{ Depot = d; }, ()=>{ Depot = CiBStockage._depotMemoire(); }).then(()=>{
+  document.documentElement.dataset.pret = "1";
+  if($("#editeur").classList.contains("hidden")) rendreAccueil(); else if(courant) sauver();
+});
 })();
 </script>
 </body>

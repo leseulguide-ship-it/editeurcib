@@ -10,7 +10,7 @@ const racine = join(dirname(fileURLToPath(import.meta.url)), "..");
 const www = join(racine, "www");
 
 // Fichiers de l'application (même liste que le site web).
-const FICHIERS = ["index.html", "manifest.webmanifest", "sw.js", "fonts", "img", "lib"];
+const FICHIERS = ["index.html", "manifest.webmanifest", "sw.js", "fonts", "img", "lib", "js"];
 
 rmSync(www, { recursive: true, force: true });
 mkdirSync(www);

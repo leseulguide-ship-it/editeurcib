@@ -11,4 +11,4 @@ livrables/
 
 # Documents de test : ne jamais envoyer sur GitHub
 test/
-tests/
+tests/sorties/
