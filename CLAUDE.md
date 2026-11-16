@@ -8,6 +8,7 @@ EditeurCiB est le traitement de texte de CiB (modèles de courriers et de docume
 Règles à toujours respecter :
 - **Tout en français** : interface, messages, commentaires du code, documentation, workflows.
 - **Marque CiB** : logo et couleurs CiB (orange `#E16326`, bleu `#007296`), nom « EditeurCiB » et mention « Créé par Mathias Pascal Ikeng ».
+- **Icônes** : logo de l'application = `img/logo-editeurcib.png` (version simplifiée `img/logo-editeurcib-petit.png` pour les petites tailles) ; icône des documents = `img/document-editeurcib.png` / `img/document-256.png` ; le logo CiB (`img/logo-cib.png`) reste la signature de marque. Sources nettoyées dans `design/` (non publié).
 - **Hors ligne** : aucune ressource ne doit venir d'Internet (pas de CDN, pas de polices Google, pas d'appel réseau). Bibliothèques dans `lib/`, polices dans `fonts/`. Tout nouveau fichier de l'application doit être ajouté à la liste `FICHIERS` de `sw.js` (et changer `VERSION` pour forcer la mise à jour du cache).
 - **Téléphone** : l'interface doit rester utilisable sur un écran de téléphone (tactile, petite largeur) et dans l'APK Android.
 - **Ne jamais perdre de travail** : documents enregistrés un par un (IndexedDB, fichiers natifs sous Android), alerte rouge si un enregistrement échoue.

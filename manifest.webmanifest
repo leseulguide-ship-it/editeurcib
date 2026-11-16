@@ -6,7 +6,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#E3E7EE",
+  "background_color": "#FFFFFF",
   "theme_color": "#FFFFFF",
   "icons": [
     {
@@ -47,8 +47,13 @@
       },
       "icons": [
         {
-          "src": "img/icon-192.png",
-          "sizes": "192x192",
+          "src": "img/document-256.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        },
+        {
+          "src": "img/document-editeurcib.png",
+          "sizes": "128x128",
           "type": "image/png"
         }
       ],

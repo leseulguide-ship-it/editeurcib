@@ -60,7 +60,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .top{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;background:none;border:0;padding:4px 6px;border-radius:8px;color:var(--ink)}
 .logo:hover{background:var(--hover)}
-.logo img{width:30px;height:30px;border-radius:7px;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.logo img{width:30px;height:30px}
 .logo em{font-style:normal;color:var(--brand)}
 #titre{flex:1 1 180px;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 10px;font-weight:600;font-size:15px}
 #titre:hover,#titre:focus{border-color:var(--line);background:var(--desk);outline:none}
@@ -119,7 +119,12 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 
 /* Marque CiB */
 .marque{display:flex;align-items:center;gap:14px;margin:0 0 28px}
-.marque img{width:64px;height:64px;border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+.marque img{width:64px;height:64px}
+.signature-cib{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);font-size:13px}
+.signature-cib img{width:20px !important;height:20px !important;border-radius:4px;box-shadow:none !important}
+/* Icône des documents EditeurCiB */
+.ico-doc{width:28px;height:28px;flex:none}
+.dlg-ico{display:block;width:64px;height:64px;margin:0 0 6px}
 .marque strong{display:block;font-size:22px;font-weight:700;letter-spacing:-.01em}
 .marque em,.boite h2 em{font-style:normal;color:var(--brand)}
 .marque span{color:var(--ink-soft);font-size:14px}
@@ -129,7 +134,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .lien{background:none;border:0;color:var(--accent);font-weight:600;padding:4px 0}
 .voile{position:fixed;inset:0;z-index:40;background:rgba(10,16,28,.55);display:grid;place-items:center;padding:20px}
 .boite{background:var(--bar);color:var(--ink);border-radius:16px;max-width:380px;width:100%;padding:28px 24px;text-align:center;box-shadow:var(--shadow)}
-.boite img{border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.boite > img{display:block;margin:0 auto}
 .boite h2{margin:14px 0 2px;font-size:24px}
 .boite .version{margin:0 0 14px;color:var(--ink-soft);font-size:13px}
 .boite p{line-height:1.5;font-size:14.5px}
@@ -289,7 +294,7 @@ body.clavier #editeur{padding-bottom:12px}
 <body>
 <header>
   <div class="top">
-    <button class="logo" id="vers-accueil" title="Accueil"><img src="img/logo-cib.png" alt="" width="30" height="30"><span>Editeur<em>CiB</em></span></button>
+    <button class="logo" id="vers-accueil" title="Accueil"><img src="img/logo-editeurcib-petit.png" alt="" width="30" height="30"><span>Editeur<em>CiB</em></span></button>
     <input id="titre" class="hidden" aria-label="Titre du document" placeholder="Document sans titre">
     <div class="actions">
       <button class="btn" id="b-ouvrir">Ouvrir un fichier</button>
@@ -358,7 +363,7 @@ body.clavier #editeur{padding-bottom:12px}
 </header>
 
 <main id="accueil">
-  <div class="marque"><img src="img/logo-cib.png" alt="Logo CiB" width="64" height="64"><div><strong>Editeur<em>CiB</em></strong><span>Le traitement de texte de CiB</span></div></div>
+  <div class="marque"><img src="img/logo-editeurcib.png" alt="Logo EditeurCiB" width="64" height="64"><div><strong>Editeur<em>CiB</em></strong><span class="signature-cib"><img src="img/logo-cib.png" alt="" width="20" height="20">Le traitement de texte de CiB</span></div></div>
   <div id="installer" class="installer hidden">
     <img src="img/apple-touch-icon.png" alt="" width="40" height="40">
     <p id="installer-texte"></p>
@@ -384,8 +389,9 @@ body.clavier #editeur{padding-bottom:12px}
 
 <div id="apropos" class="voile hidden" role="dialog" aria-modal="true" aria-labelledby="apropos-titre">
   <div class="boite">
-    <img src="img/logo-cib.png" alt="Logo CiB" width="96" height="96">
+    <img src="img/logo-editeurcib.png" alt="Logo EditeurCiB" width="96" height="96">
     <h2 id="apropos-titre">Editeur<em>CiB</em></h2>
+    <p class="signature-cib"><img src="img/logo-cib.png" alt="Logo CiB" width="20" height="20">EditeurCiB, une application CiB</p>
     <p class="version">Version 1.0</p>
     <p>Traitement de texte en français : modèles de courriers prêts à remplir, suggestions de mots pendant la frappe, ouverture et export de fichiers Word (.docx). Fonctionne sans connexion Internet.</p>
     <p class="auteur">Créé par <strong>Mathias Pascal Ikeng</strong><br>pour CiB</p>
@@ -669,6 +675,8 @@ async function rendreAccueil(){
   metas.forEach(d=>{
     const id = d.id;
     const l = document.createElement("div"); l.className = "ligne";
+    const ico = document.createElement("img"); ico.className = "ico-doc"; ico.src = "img/document-editeurcib.png"; ico.alt = ""; ico.width = 28; ico.height = 28;
+    l.appendChild(ico);
     const nom = document.createElement("button"); nom.className="nom"; nom.textContent = d.titre;
     nom.addEventListener("click", ()=>ouvrirExistant(id));
     const t = document.createElement("time");
@@ -1650,6 +1658,8 @@ page.addEventListener("load", reperesBientot, true);   // images chargées
 const TYPES_DOCS = [["docx","Word (.docx)"],["doc","Word ancien (.doc)"],["odt","OpenDocument (.odt)"],["txt","Texte (.txt)"]];
 async function ecranParDefaut(){
   const box = document.createElement("div");
+  const ico = document.createElement("img"); ico.className = "dlg-ico"; ico.src = "img/document-editeurcib.png"; ico.alt = "Icône des documents EditeurCiB"; ico.width = 64; ico.height = 64;
+  box.appendChild(ico);
   const etapes = document.createElement("ol"); etapes.className = "dlg-liste";
   [
     "Ouvrez un fichier Word (.docx ou .doc), .odt ou .txt depuis Fichiers, WhatsApp ou Gmail.",
