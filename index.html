@@ -18,6 +18,7 @@
 <script src="lib/mammoth.browser.min.js"></script>
 <script src="js/stockage.js"></script>
 <script src="js/word.js"></script>
+<script src="js/formats.js"></script>
 <script src="js/modeles.js"></script>
 <style>
 :root{
@@ -311,7 +312,7 @@ body.clavier #editeur{padding-bottom:12px}
     <button class="hidden" id="b-ligne-plus" tabindex="-1" aria-hidden="true"></button>
     <button class="hidden" id="b-ligne-moins" tabindex="-1" aria-hidden="true"></button>
     <input type="file" id="fichier-image" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" class="hidden">
-    <input type="file" id="fichier" accept=".docx,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html" class="hidden">
+    <input type="file" id="fichier" accept=".docx,.doc,.odt,.txt,.html,.htm,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.oasis.opendocument.text,text/plain,text/html" class="hidden">
   </div>
   <div class="outils hidden" id="outils">
     <div class="groupe">
@@ -388,6 +389,7 @@ body.clavier #editeur{padding-bottom:12px}
     <p class="version">Version 1.0</p>
     <p>Traitement de texte en français : modèles de courriers prêts à remplir, suggestions de mots pendant la frappe, ouverture et export de fichiers Word (.docx). Fonctionne sans connexion Internet.</p>
     <p class="auteur">Créé par <strong>Mathias Pascal Ikeng</strong><br>pour CiB</p>
+    <p><button class="lien hidden" id="b-defaut">Faire d’EditeurCiB votre application par défaut</button></p>
     <button class="btn primary" id="b-fermer">Fermer</button>
   </div>
 </div>
@@ -1254,16 +1256,21 @@ async function ouvrirFichier(nomFichier, lireOctets){
   let html, avert = [];
   try{
     const octets = await lireOctets();
-    if(/\.docx$/i.test(nomFichier) || /^PK/.test(new TextDecoder().decode(new Uint8Array(octets.slice(0, 2))))){
-      if(!window.CiBWord || !window.JSZip) throw new Error("lecteur");
-      const r = await CiBWord.importer(octets);
-      html = r.html; avert = r.avertissements;
-    } else {
-      const texte = new TextDecoder().decode(octets);
-      if(/\.html?$/i.test(nomFichier) || /^\s*<(!doctype|html)/i.test(texte)) html = CiBWord.nettoyerCollage(texte) || "<p><br></p>";
-      else html = texte.split(/\r?\n/).map(l=>{ const p=document.createElement("p"); p.textContent=l; return l ? p.outerHTML : "<p><br></p>"; }).join("");
+    // Format reconnu d'après le contenu : .docx/.odt (zip), .doc (Word 97-2003), page web, texte.
+    const format = CiBFormats.formatDe(octets, nomFichier);
+    let r;
+    if(format === "zip"){ if(!window.CiBWord || !window.JSZip) throw new Error("lecteur"); r = await CiBWord.importer(octets); }
+    else if(format === "doc") r = CiBFormats.lireDoc(octets);
+    else {
+      const texte = CiBFormats.decoderTexte(octets);
+      if(format === "html" || /^\s*<(!doctype|html)/i.test(texte)) r = { html: CiBWord.nettoyerCollage(texte) || "<p><br></p>", avertissements: [] };
+      else r = CiBFormats.lireTxt(octets);
     }
-  }catch(err){ toast("Ce fichier n’a pas pu être ouvert. Essayez un fichier .docx, .txt ou .html."); return false; }
+    html = r.html; avert = r.avertissements;
+  }catch(err){
+    toast(/mot de passe/.test(err && err.message) ? err.message : "Ce fichier n’a pas pu être ouvert. EditeurCiB ouvre les fichiers .docx, .doc, .odt, .txt et .html.");
+    return false;
+  }
   ouvrirDoc(nouvelId(), nom, html);
   if(avert.length) avertirSimplification(nom, avert); else toast("« " + nom + " » est ouvert.");
   return true;
@@ -1441,7 +1448,7 @@ apropos.addEventListener("click", e=>{ if(e.target===apropos) apropos.classList.
 /* ---------- Bouton retour et mise en arrière-plan (Android) ---------- */
 /* ---------- Imprimer / PDF (A1) ---------- */
 // Module natif de l'APK (android/.../CibNatifPlugin.java) : impression Android, qui propose aussi « Enregistrer en PDF ».
-const CibNatif = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.registerPlugin)
+var CibNatif = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.registerPlugin)
   ? window.Capacitor.registerPlugin("CibNatif") : null;
 async function imprimer(){
   if($("#editeur").classList.contains("hidden")) return;
@@ -1637,6 +1644,52 @@ page.addEventListener("input", reperesBientot);
 window.addEventListener("resize", reperesBientot);
 page.addEventListener("load", reperesBientot, true);   // images chargées
 
+/* ---------- Application par défaut pour les documents ---------- */
+// Android : écran d'explication au premier lancement (et dans « À propos »).
+// Ordinateur (application installée) : les fichiers ouverts avec EditeurCiB arrivent par « launchQueue ».
+const TYPES_DOCS = [["docx","Word (.docx)"],["doc","Word ancien (.doc)"],["odt","OpenDocument (.odt)"],["txt","Texte (.txt)"]];
+async function ecranParDefaut(){
+  const box = document.createElement("div");
+  const etapes = document.createElement("ol"); etapes.className = "dlg-liste";
+  [
+    "Ouvrez un fichier Word (.docx ou .doc), .odt ou .txt depuis Fichiers, WhatsApp ou Gmail.",
+    "Si Android demande avec quelle application l’ouvrir, choisissez « EditeurCiB », puis touchez « Toujours ».",
+    "Les fichiers suivants de ce type s’ouvriront alors directement dans EditeurCiB.",
+    "Si le fichier s’ouvre tout seul dans une autre application (Word, WPS…), ouvrez les réglages de cette application, puis « Ouvrir par défaut » → « Effacer les préférences par défaut », et recommencez."
+  ].forEach(t=>{ const li = document.createElement("li"); li.textContent = t; etapes.appendChild(li); });
+  box.appendChild(etapes);
+  const etat = document.createElement("p"); etat.className = "dlg-note"; box.appendChild(etat);
+  if(CibNatif && CibNatif.etatParDefaut){
+    try{
+      const r = await CibNatif.etatParDefaut();
+      const oui = TYPES_DOCS.filter(([k])=>r[k]).map(([,l])=>l), non = TYPES_DOCS.filter(([k])=>!r[k]).map(([,l])=>l);
+      etat.textContent = (oui.length ? "✓ Déjà ouverts directement par EditeurCiB : " + oui.join(", ") + ". " : "") + (non.length ? "À régler : " + non.join(", ") + "." : "Tout est réglé.");
+    }catch(e){}
+  }
+  const r = await dialogue({ titre: "Faire d’EditeurCiB votre application par défaut", texte: "Pour que vos documents s’ouvrent directement dans EditeurCiB :", contenu: box, large: true,
+    boutons: [{libelle:"Ouvrir les réglages", valeur:"reglages"}, {libelle:"J’ai compris", valeur:"ok", primaire:true}] });
+  try{ localStorage.setItem("cib:defaut-vu", "1"); }catch(e){}
+  if(r === "reglages" && CibNatif){ try{ await CibNatif.ouvrirReglagesDefaut(); }catch(e){ toast("Les réglages n’ont pas pu être ouverts."); } }
+}
+if(CibNatif){
+  $("#b-defaut").classList.remove("hidden");
+  $("#b-defaut").addEventListener("click", ()=>{ $("#apropos").classList.add("hidden"); ecranParDefaut(); });
+  // Premier lancement : l'écran s'affiche une fois (sauf si l'application a été ouverte pour lire un fichier).
+  setTimeout(()=>{
+    let vu = false; try{ vu = !!localStorage.getItem("cib:defaut-vu"); }catch(e){ vu = true; }
+    if(!vu && !fichierRecuAuDemarrage && !document.querySelector("body > .voile:not(#apropos)")) ecranParDefaut();
+  }, 1500);
+}
+if("launchQueue" in window && window.launchQueue && window.launchQueue.setConsumer){
+  window.launchQueue.setConsumer(async params=>{
+    if(!params || !params.files || !params.files.length) return;
+    for(let i=0; i<50 && !Depot; i++) await new Promise(ok=>setTimeout(ok, 100));
+    if(courant) await sauver();
+    const f = await params.files[0].getFile();
+    ouvrirFichier(f.name, ()=>f.arrayBuffer());
+  });
+}
+
 /* ---------- Menu « ⋯ » ---------- */
 function fermerMenu(){ $("#menu").classList.add("hidden"); $("#b-menu").setAttribute("aria-expanded","false"); }
 $("#b-menu").addEventListener("click", e=>{
@@ -1668,9 +1721,19 @@ $("#b-plus-outils").addEventListener("click", ()=>{ const o = $("#outils").class
 })();
 
 /* ---------- Fichier Word reçu d'une autre application (« Ouvrir avec EditeurCiB », T2) ---------- */
+let fichierRecuAuDemarrage = false;
 function octetsDepuisBase64(b64){ const bin = atob(b64), t = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) t[i] = bin.charCodeAt(i); return t.buffer; }
 if(CibNatif && CibNatif.addListener){
   CibNatif.addListener("fichierRecu", async r=>{
+    fichierRecuAuDemarrage = true;
+    if(r && typeof r.texte === "string" && !r.donnees){
+      // Texte partagé (message WhatsApp, e-mail…) : nouveau document.
+      for(let i=0; i<50 && !Depot; i++) await new Promise(ok=>setTimeout(ok, 100));
+      if(courant) await sauver();
+      document.querySelectorAll("body > .voile").forEach(v=>v.fermer && v.fermer(null));
+      ouvrirFichier("Texte partagé.txt", async ()=>new TextEncoder().encode(r.texte).buffer);
+      return;
+    }
     if(!r || r.erreur || !r.donnees){ toast("Ce fichier n’a pas pu être lu" + (r && r.erreur ? " : " + r.erreur : ".")); return; }
     // Attendre que les documents soient prêts, et enregistrer celui en cours.
     for(let i=0; i<50 && !Depot; i++) await new Promise(ok=>setTimeout(ok, 100));
@@ -1683,6 +1746,9 @@ if(CibNatif && CibNatif.addListener){
 const AppNatif = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
 if(AppNatif){
   AppNatif.addListener("backButton", ()=>{
+    const ouverte = [...document.querySelectorAll("body > .voile:not(#apropos)")].pop();
+    if(ouverte && ouverte.fermer){ ouverte.fermer(null); return; }   // fenêtre ouverte : Retour la ferme
+    if(!$("#menu").classList.contains("hidden")){ fermerMenu(); return; }
     if(!apropos.classList.contains("hidden")){ apropos.classList.add("hidden"); return; }
     if(!popup.classList.contains("hidden")){ cacherPopup(); return; }
     if(!$("#editeur").classList.contains("hidden")) quitterEditeur();

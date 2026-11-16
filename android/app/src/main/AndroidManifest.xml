@@ -24,7 +24,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- « Ouvrir avec EditeurCiB » : fichiers Word reçus (gestionnaire de fichiers, WhatsApp, e-mail…) -->
+            <!-- « Ouvrir avec EditeurCiB » : documents Word (.docx, .doc), OpenDocument (.odt) et texte (.txt)
+                 depuis Fichiers, WhatsApp, Gmail… -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -32,12 +33,18 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/msword" />
+                <data android:mimeType="application/vnd.oasis.opendocument.text" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- « Partager » un fichier Word vers EditeurCiB -->
+            <!-- « Partager » un document (ou du texte) vers EditeurCiB -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/msword" />
+                <data android:mimeType="application/vnd.oasis.opendocument.text" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
 
         </activity>
@@ -52,6 +59,26 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
+
+    <!-- Voir les autres applications qui ouvrent ces documents, pour savoir si EditeurCiB est l'application par défaut. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/msword" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.oasis.opendocument.text" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
 
     <!-- Permissions : aucune connexion Internet (volontaire) : l'application fonctionne hors ligne.
          Écriture dans Documents/EditeurCiB : permission demandée seulement pour Android 9 et 10 (comme pdf_cib). -->

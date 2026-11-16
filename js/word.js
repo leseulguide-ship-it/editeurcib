@@ -337,6 +337,8 @@ const SURLIGNAGE = {yellow:"#FFFF00",green:"#00FF00",cyan:"#00FFFF",magenta:"#FF
 
 async function importer(buffer){
   const zip = await JSZip.loadAsync(buffer);
+  // Document OpenDocument (.odt : LibreOffice, WPS…) : lu par js/formats.js.
+  if(!zip.file("word/document.xml") && zip.file("content.xml") && window.CiBFormats) return CiBFormats.lireOdt(zip);
   try{ return await lireDocx(zip); }
   catch(e){
     if(!window.mammoth) throw e;
