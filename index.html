@@ -83,8 +83,6 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .couleur:hover{background:var(--hover)}
 .couleur input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .couleur span{font-weight:700;border-bottom:3px solid #C0392B;line-height:1.1}
-.ia{display:flex;gap:6px;align-items:center;border:1px solid var(--accent);color:var(--accent);background:none;border-radius:7px;height:34px;padding:0 10px;font-weight:600;font-size:14px;white-space:nowrap}
-.ia:hover{background:var(--accent-soft)}
 
 /* Accueil */
 #accueil{max-width:1080px;margin:0 auto;padding:40px 20px 60px}
@@ -194,6 +192,12 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .mini-contenu p{margin:0 0 .45em}
 .mini-contenu h1{font-size:18pt;margin:.4em 0 .5em}
 
+/* Repères de fin de page A4 (ordinateur) */
+#editeur{position:relative}
+#reperes{position:absolute;left:0;top:0;width:100%;height:0;pointer-events:none}
+.repere{position:absolute;height:1px;background:linear-gradient(to right,#9AA6B8 0 80px,transparent 80px calc(100% - 80px),#9AA6B8 calc(100% - 80px))}
+.repere span{position:absolute;left:calc(100% + 10px);top:-9px;font-size:12px;color:var(--ink-soft);white-space:nowrap}
+@media print{#reperes{display:none !important}}
 /* Suggestions */
 #popup{position:fixed;z-index:20;min-width:200px;max-width:min(440px,92vw);background:var(--bar);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;font-size:14px}
 #popup .item{display:flex;gap:10px;align-items:baseline;width:100%;border:0;background:none;text-align:left;padding:8px 12px;color:var(--ink)}
@@ -346,12 +350,6 @@ body.clavier #editeur{padding-bottom:12px}
       <button class="ob" id="b-image" title="Insérer une image, un logo ou une signature scannée"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5L20 17"/></svg></button>
       <button class="ob" id="b-tableau" title="Insérer un tableau 3 × 3"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 15h16M9.5 5v14M14.5 5v14"/></svg></button>
     </div>
-    <div class="groupe">
-      <button class="ia hidden" id="b-ia" title="Proposer la suite de la phrase (Ctrl+Espace)">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>
-        Continuer la phrase
-      </button>
-    </div>
   </div>
 </header>
 
@@ -393,6 +391,7 @@ body.clavier #editeur{padding-bottom:12px}
 
 <main id="editeur" class="hidden">
   <div id="page" contenteditable="true" spellcheck="true" lang="fr"></div>
+  <div id="reperes" aria-hidden="true"></div>
 </main>
 
 <div id="etat" class="hidden">
@@ -528,11 +527,14 @@ function ouvrirDoc(id, titre, html, maj){
   page.innerHTML = html;
   page.querySelectorAll(".champ").forEach(c=>c.setAttribute("spellcheck","false"));
   montrer("editeur");
+  hist.pos = -1;
   if(!maj) sauver(); else etatEnreg("ok");
   compter();
   const premier = page.querySelector(".champ");
   page.focus();
   if(premier) selectionnerChamp(premier); else placerFin();
+  debutHistorique();
+  reperesBientot();
 }
 async function ouvrirExistant(id){
   let d = null;
@@ -803,7 +805,7 @@ page.addEventListener("click", e=>{
 });
 
 /* ---------- Dictionnaire et apprentissage ---------- */
-const MOTS = ("de la le et les des en un une du que qui à au aux est pour dans par sur avec ne pas plus ce cette ces se sa son ses il elle ils elles nous vous je tu on mon ma mes votre vos notre nos leur leurs mais ou donc or ni car comme tout tous toute toutes être avoir faire dire aller voir savoir pouvoir vouloir venir devoir prendre trouver donner mettre parler passer demander tenir sembler laisser rester penser entendre croire connaître rendre vivre suivre comprendre attendre sortir écrire recevoir répondre remercier solliciter souhaiter envoyer présenter permettre obtenir expliquer informer confirmer accepter refuser proposer préciser concerner contacter rencontrer travailler payer rembourser commander livrer réparer remplacer annuler signaler constater adresser joindre transmettre vérifier prévoir organiser assurer engager agréer prier croire veuillez bien très aussi déjà encore toujours jamais ici après avant depuis pendant entre sans sous selon chez contre vers afin lorsque quand puisque ainsi alors enfin ensuite également notamment cependant toutefois néanmoins pourtant actuellement rapidement précisément respectueusement sincèrement vivement personnellement immédiatement prochainement madame monsieur mesdames messieurs mademoiselle docteur directeur directrice président présidente responsable chef service ressources humaines administration ministère mairie préfecture délégué délégation département région commune université école lycée collège établissement entreprise société agence banque assurance hôpital tribunal cabinet bureau poste demande lettre courrier objet référence dossier numéro date jour jours mois année semaine heure heures délai réponse décision attestation certificat document documents pièce pièces justificatif justificatifs copie original formulaire contrat facture paiement montant somme francs euros prix compte commande livraison produit article marché travail emploi poste stage candidature expérience compétences formation diplôme licence master baccalauréat études université parcours profil entretien recrutement salaire congé congés absence permission maladie mission retard problème situation raison raisons motif motifs cause conséquence préjudice réclamation plainte remboursement réparation remplacement erreur retard dysfonctionnement panne compréhension bienveillance considération attention disposition renseignement renseignements complémentaire complémentaires information informations suite favorable rapide urgent urgente important importante nécessaire nécessaires possible impossible personnel personnelle professionnel professionnelle administratif administrative officiel officielle actuel actuelle prochain prochaine dernier dernière premier première nouveau nouvelle grand grande petit petite bon bonne meilleur meilleure haute haut profond profonde respectueux respectueuses respectueuse distinguées distingué salutations sentiments expression honneur assurance gratitude remerciements reconnaissance sincères cordiales cordialement merci avance pouvez pourriez voudriez souhaiterais aimerais voudrais pourrais serais serait aurais aurait suis êtes sommes sont était étais avons avez ont fait faits faite dit vu reçu reçue envoyé envoyée effectué effectuée constaté constatée adressé adressée demandé demandée obtenu prévu prévue informé informée joint jointe ci-joint ci-jointe ci-dessous ci-dessus présente présent présents présentes soussigné soussignée certifie atteste déclare servir valoir droit concerne concernant relatif relative relatifs suivant suivante suivants conformément vertu cadre titre égard regard vue fin moment période ville pays famille enfant enfants parents mère père frère sœur mari épouse domicile adresse téléphone mail courriel identité naissance né née nationalité camerounaise camerounais français française cameroun douala yaoundé afrique projet rapport réunion compte-rendu procès-verbal ordre point points proposition propositions solution solutions mesure mesures action actions besoin besoins objectif objectifs résultat résultats équipe collègue collègues client clients partenaire partenaires fournisseur fournisseurs autorité autorités supérieur hiérarchique direction générale générale général technique financier financière commercial commerciale juridique social sociale public publique privé privée ").trim().split(/\s+/);
+const MOTS = ("de la le et les des en un une du que qui à au aux est pour dans par sur avec ne pas plus ce cette ces se sa son ses il elle ils elles nous vous je tu on mon ma mes votre vos notre nos leur leurs mais ou donc or ni car comme tout tous toute toutes être avoir faire dire aller voir savoir pouvoir vouloir venir devoir prendre trouver donner mettre parler passer demander tenir sembler laisser rester penser entendre croire connaître rendre vivre suivre comprendre attendre sortir écrire recevoir répondre remercier solliciter souhaiter envoyer présenter permettre obtenir expliquer informer confirmer accepter refuser proposer préciser concerner contacter rencontrer travailler payer rembourser commander livrer réparer remplacer annuler signaler constater adresser joindre transmettre vérifier prévoir organiser assurer engager agréer prier croire veuillez bien très aussi déjà encore toujours jamais ici après avant depuis pendant entre sans sous selon chez contre vers afin lorsque quand puisque ainsi alors enfin ensuite également notamment cependant toutefois néanmoins pourtant actuellement rapidement précisément respectueusement sincèrement vivement personnellement immédiatement prochainement madame monsieur mesdames messieurs mademoiselle docteur directeur directrice président présidente responsable chef service ressources humaines administration ministère mairie préfecture délégué délégation département région commune université école lycée collège établissement entreprise société agence banque assurance hôpital tribunal cabinet bureau poste demande lettre courrier objet référence dossier numéro date jour jours mois année semaine heure heures délai réponse décision attestation certificat document documents pièce pièces justificatif justificatifs copie original formulaire contrat facture paiement montant somme francs euros prix compte commande livraison produit article marché travail emploi poste stage candidature expérience compétences formation diplôme licence master baccalauréat études université parcours profil entretien recrutement salaire congé congés absence permission maladie mission retard problème situation raison raisons motif motifs cause conséquence préjudice réclamation plainte remboursement réparation remplacement erreur retard dysfonctionnement panne compréhension bienveillance considération attention disposition renseignement renseignements complémentaire complémentaires information informations suite favorable rapide urgent urgente important importante nécessaire nécessaires possible impossible personnel personnelle professionnel professionnelle administratif administrative officiel officielle actuel actuelle prochain prochaine dernier dernière premier première nouveau nouvelle grand grande petit petite bon bonne meilleur meilleure haute haut profond profonde respectueux respectueuses respectueuse distinguées distingué salutations sentiments expression honneur assurance gratitude remerciements reconnaissance sincères cordiales cordialement merci avance pouvez pourriez voudriez souhaiterais aimerais voudrais pourrais serais serait aurais aurait suis êtes sommes sont était étais avons avez ont fait faits faite dit vu reçu reçue envoyé envoyée effectué effectuée constaté constatée adressé adressée demandé demandée obtenu prévu prévue informé informée joint jointe ci-joint ci-jointe ci-dessous ci-dessus présente présent présents présentes soussigné soussignée certifie atteste déclare servir valoir droit concerne concernant relatif relative relatifs suivant suivante suivants conformément vertu cadre titre égard regard vue fin moment période ville pays famille enfant enfants parents mère père frère sœur mari épouse domicile adresse téléphone mail courriel identité naissance né née nationalité camerounaise camerounais français française cameroun douala yaoundé afrique projet rapport réunion compte-rendu procès-verbal ordre point points proposition propositions solution solutions mesure mesures action actions besoin besoins objectif objectifs résultat résultats équipe collègue collègues client clients partenaire partenaires fournisseur fournisseurs autorité autorités supérieur hiérarchique direction générale générale général technique financier financière commercial commerciale juridique social sociale public publique privé privée souhaite souhaitons sollicite sollicitons remercie remercions prie prions demande demandons reste restons tiens tenons joins joignons transmets transmettons informe informons confirme confirmons accuse accusons atteste attestons certifie certifions déclare déclarons propose proposons serions devis facture chantier travaux maçonnerie béton carrelage peinture plomberie électricité menuiserie toiture terrassement fondations ouvrage maître œuvre réception réserves acompte solde avenant marché prestation entreprise ").trim().split(/\s+/);
 const BASE = new Map(); MOTS.forEach((m,i)=>{ if(!BASE.has(m)) BASE.set(m, i); });
 
 const PHRASES = [
@@ -861,9 +863,17 @@ function apprendreMot(prev, w){
 }
 const freq = w => (appris.f[w]||0)*3 + (GRAINES.f[w]||0);
 const bigr = (p,w) => (appris.b[p+" "+w]||0)*3 + (GRAINES.b[p+" "+w]||0);
+// Petites règles de grammaire : pas d'infinitif juste après « je, nous… » ni d'adverbe en « -ment » après « mes, vos… » (B13).
+const SUJETS = new Set(["je","j","tu","il","elle","on","nous","vous","ils","elles"]);
+const DETERMINANTS = new Set(["mes","ses","tes","vos","nos","les","des","ces","leurs","le","la","l","un","une","du","au","aux","mon","ma","ton","ta","son","sa","votre","notre","leur","ce","cette","cet"]);
 function score(w, prev){
   const r = BASE.has(w) ? BASE.get(w) : 2000;
-  return 40/(r+20) + freq(w)*0.6 + (prev ? bigr(prev,w)*4 : 0);
+  let s = 40/(r+20) + freq(w)*0.6 + (prev ? bigr(prev,w)*4 : 0);
+  if(prev && !bigr(prev, w)){
+    if(SUJETS.has(prev) && /(er|ir)$/.test(w) && w.length > 4) s *= 0.1;
+    if(DETERMINANTS.has(prev) && /ment$/.test(w)) s *= 0.1;
+  }
+  return s;
 }
 function tousLesMots(){
   const s = new Set(BASE.keys());
@@ -935,18 +945,16 @@ function calculer(){
   ctx = c; items = res; idx = 0; afficher();
 }
 
-function afficher(enCours){
+function afficher(){
   popup.innerHTML = "";
-  if(enCours){
-    popup.innerHTML = `<div class="pied">Rédaction de la suite…</div>`;
-  } else {
+  {
     items.forEach((it,i)=>{
       const b = document.createElement("button");
-      b.className = "item " + (it.type==="phrase"||it.type==="ia" ? "phrase" : "") + (i===idx?" sel":"");
+      b.className = "item " + (it.type==="phrase" ? "phrase" : "") + (i===idx?" sel":"");
       b.setAttribute("role","option");
-      const t = document.createElement("span"); t.className="t"; t.textContent = it.type==="phrase" ? "… "+it.vue.trim() : it.type==="ia" ? "… "+it.txt.trim() : it.txt;
+      const t = document.createElement("span"); t.className="t"; t.textContent = it.type==="phrase" ? "… "+it.vue.trim() : it.txt;
       const k = document.createElement("span"); k.className="k";
-      k.textContent = it.type==="phrase" ? "formule" : it.type==="ia" ? "suggestion IA" : it.type==="suivant" ? "mot suivant" : "";
+      k.textContent = it.type==="phrase" ? "formule" : it.type==="suivant" ? "mot suivant" : "";
       b.append(t,k);
       b.addEventListener("pointerdown", e=>{ e.preventDefault(); idx=i; accepter(); });
       popup.appendChild(b);
@@ -985,9 +993,27 @@ function placerPopup(){
 }
 function cacherPopup(){ popup.classList.add("hidden"); items = []; ctx = null; }
 
+// Espace ajoutée automatiquement après un mot suggéré : retirée si l'on tape « , . ) » juste après,
+// changée en espace insécable avant « ; : ! ? » (règle française).
+let espaceAuto = null;
+function noterEspaceAuto(){ const s = getSelection(); espaceAuto = (s.anchorNode && s.anchorNode.nodeType === 3) ? { noeud: s.anchorNode, pos: s.anchorOffset } : null; }
+function corrigerEspaceAuto(e){
+  const ea = espaceAuto; espaceAuto = null;
+  if(!ea || e.inputType !== "insertText" || !e.data || !/^[,.)…;:!?]/.test(e.data)) return;
+  const s = getSelection();
+  if(!s.isCollapsed || s.anchorNode !== ea.noeud || s.anchorOffset !== ea.pos || !/[ \u00a0]/.test(ea.noeud.data[ea.pos-1] || "")) return;
+  if(/^[;:!?]/.test(e.data)) insecableApres = { noeud: ea.noeud, pos: ea.pos - 1 };   // posée après l'insertion (le navigateur la remplacerait)
+  else { ea.noeud.deleteData(ea.pos-1, 1); s.collapse(ea.noeud, ea.pos-1); }
+}
+let insecableApres = null;
+page.addEventListener("input", ()=>{
+  const ia = insecableApres; insecableApres = null;
+  if(ia && ia.noeud.isConnected && /[ \u00a0]/.test(ia.noeud.data[ia.pos] || "") && /[;:!?]/.test(ia.noeud.data[ia.pos+1] || "")) ia.noeud.replaceData(ia.pos, 1, "\u00a0");
+});
 function accepter(){
   const it = items[idx]; if(!it){ cacherPopup(); return; }
   page.focus();
+  memoriser();
   const c = infoCurseur() || ctx;
   if(it.type==="mot" && c && c.prefixe){
     const r = document.createRange();
@@ -995,12 +1021,15 @@ function accepter(){
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
     document.execCommand("insertText", false, it.txt + " ");
     apprendreMot(c.prev, it.txt.toLowerCase());
+    noterEspaceAuto();
   } else if(it.type==="suivant"){
     document.execCommand("insertText", false, it.txt + " ");
     apprendreMot(c && c.prev, it.txt);
+    noterEspaceAuto();
   } else {
     document.execCommand("insertText", false, it.txt);
   }
+  groupe = { type:"", t:0 };
   cacherPopup();
   setTimeout(calculer, 0);
 }
@@ -1013,6 +1042,67 @@ page.addEventListener("input", e=>{
   if(!e.isComposing && !saisieEnCours) nettoyerChamps();
   sauverBientot(); compter();
   if(e.inputType && e.inputType.startsWith("insert")) calculer(); else cacherPopup();
+});
+/* ---------- Annuler / Rétablir par mots, et non lettre par lettre (B14) ---------- */
+// L'historique du navigateur est perdu dès que l'application retouche le texte (champs) :
+// EditeurCiB garde donc son propre historique, un état avant chaque groupe de frappe ou chaque action.
+const hist = { pile: [], pos: -1 };
+let groupe = { type:"", t:0 };
+function positionCurseur(){
+  const s = getSelection(); if(!s.rangeCount || !page.contains(s.anchorNode)) return null;
+  const r = document.createRange(); r.selectNodeContents(page);
+  try{ r.setEnd(s.anchorNode, s.anchorOffset); }catch(e){ return null; }
+  return r.toString().length;
+}
+function placerCurseurA(n){
+  if(n == null){ placerFin(); return; }
+  const w = document.createTreeWalker(page, NodeFilter.SHOW_TEXT); let t;
+  while((t = w.nextNode())){ if(n <= t.length){ const s = getSelection(); s.removeAllRanges(); const r = document.createRange(); r.setStart(t, n); r.collapse(true); s.addRange(r); return; } n -= t.length; }
+  placerFin();
+}
+const etatPage = () => ({ html: page.innerHTML.replace(/ class="choisie"/g, ""), curseur: positionCurseur() });
+function debutHistorique(){ hist.pile = [etatPage()]; hist.pos = 0; groupe = { type:"", t:0 }; }
+function memoriser(){
+  if(hist.pos < 0) return debutHistorique();
+  const e = etatPage();
+  hist.pile.length = hist.pos + 1;                       // une nouvelle modification efface « Rétablir »
+  if(hist.pile[hist.pos].html === e.html){ hist.pile[hist.pos].curseur = e.curseur; return; }
+  hist.pile.push(e); hist.pos++;
+  let taille = hist.pile.reduce((a, x)=>a + x.html.length, 0);
+  while(hist.pile.length > 2 && (hist.pile.length > 100 || taille > 40e6)){ taille -= hist.pile.shift().html.length; hist.pos--; }
+}
+function restaurer(e){
+  page.innerHTML = e.html; page.focus(); placerCurseurA(e.curseur);
+  groupe = { type:"", t:0 }; cacherPopup(); choisirImage(null); sauverBientot(); compter(); majBoutons(); reperesBientot();
+}
+function annuler(){
+  if(hist.pos < 0) return;
+  const e = etatPage();
+  if(hist.pile[hist.pos].html !== e.html){ hist.pile.length = hist.pos + 1; hist.pile.push(e); hist.pos++; }
+  if(hist.pos === 0){ toast("Rien à annuler."); return; }
+  hist.pos--; restaurer(hist.pile[hist.pos]);
+}
+function retablir(){
+  if(hist.pos < 0 || hist.pos >= hist.pile.length - 1) return;
+  hist.pos++; restaurer(hist.pile[hist.pos]);
+}
+page.addEventListener("beforeinput", e=>{
+  if(e.inputType === "historyUndo"){ e.preventDefault(); annuler(); return; }
+  if(e.inputType === "historyRedo"){ e.preventDefault(); retablir(); return; }
+  const maintenant = Date.now();
+  const type = e.inputType.startsWith("delete") ? "suppr" : (e.inputType === "insertText" || e.inputType === "insertCompositionText" || e.inputType === "insertReplacementText") ? "texte" : e.inputType;
+  const espace = type === "texte" && /\s$/.test(e.data || "");
+  // Nouveau groupe : autre type de frappe, pause, début d'un nouveau mot, ou action (coller, Entrée…).
+  if(type !== groupe.type || maintenant - groupe.t > 1500 || (type === "texte" && groupe.espace && !espace) || (type !== "texte" && type !== "suppr")) memoriser();
+  groupe = { type, t: maintenant, espace };
+  corrigerEspaceAuto(e);
+});
+page.addEventListener("keydown", e=>{
+  if((e.ctrlKey || e.metaKey) && !e.altKey){
+    const k = e.key.toLowerCase();
+    if(k === "z" && !e.shiftKey){ e.preventDefault(); annuler(); return; }
+    if(k === "y" || (k === "z" && e.shiftKey)){ e.preventDefault(); retablir(); return; }
+  }
 });
 page.addEventListener("keydown", e=>{
   const ouvert = !popup.classList.contains("hidden") && items.length;
@@ -1028,7 +1118,6 @@ page.addEventListener("keydown", e=>{
     if(!e.shiftKey && !champSuivant()) document.execCommand("insertHTML", false, '<span class="tab">\t</span>&#8203;');
     return;
   }
-  if(e.key===" " && (e.ctrlKey||e.metaKey)){ e.preventDefault(); continuerIA(); return; }
 });
 page.addEventListener("keyup", e=>{ if(/^Arrow|Home|End|PageUp|PageDown/.test(e.key) && !items.length) cacherPopup(); majBoutons(); });
 page.addEventListener("mouseup", ()=>{ cacherPopup(); majBoutons(); });
@@ -1043,47 +1132,16 @@ $("#b-sugg").addEventListener("click", ()=>{
   toast(suggOn ? "Suggestions activées" : "Suggestions désactivées");
 });
 
-/* ---------- Suite de phrase par l’IA (si disponible) ---------- */
-let sample = null;
-// Version Android : pas de suite par l’IA (elle nécessite un compte Claude).
-let iaEnCours = null;
-async function continuerIA(){
-  if(!sample){ return; }
-  const c = infoCurseur();
-  if(!c){ toast("Placez le curseur à l’endroit où continuer."); return; }
-  const r = document.createRange(); r.setStart(page,0); r.setEnd(c.node, c.off);
-  const contexte = r.toString().replace(/\s+/g," ").slice(-1500);
-  if(contexte.trim().length < 3){ toast("Écrivez d’abord quelques mots."); return; }
-  if(iaEnCours) iaEnCours.abort();
-  iaEnCours = new AbortController();
-  ctx = c; items = []; afficher(true);
-  try{
-    const { text } = await sample(
-      "Tu aides à rédiger un document en français (lettre, demande, courrier administratif ou autre). " +
-      "Voici le texte situé juste avant le curseur :\n<<<\n" + contexte + "\n>>>\n" +
-      "Propose la suite immédiate, au plus une phrase, dans le même ton, en reprenant exactement là où le texte s’arrête. " +
-      "Si le texte s’arrête au milieu d’un mot, termine ce mot. Commence par une espace si un nouveau mot commence. " +
-      "Réponds uniquement avec le texte à insérer, sans guillemets, sans explication.",
-      { modelTier: "quick", signal: iaEnCours.signal, cache: false });
-    let t = (text||"").replace(/^["«»“”]+|["«»“”]+$/g,"");
-    if(!t.trim()){ cacherPopup(); toast("Aucune suite proposée."); return; }
-    if(!/\s$/.test(c.avant) && c.avant && !/^[\s,.;:!?]/.test(t) && !c.prefixe) t = " " + t.trimStart();
-    items = [{type:"ia", txt:t}]; idx = 0; afficher();
-  }catch(e){
-    cacherPopup();
-    if(e && e.code==="not_granted"){ $("#b-ia").classList.add("hidden"); toast("La suite par l’IA n’a pas été autorisée."); }
-    else if(e && e.code==="rate_limited") toast("Trop de demandes, réessayez dans un instant.");
-    else if(e && e.name!=="AbortError") toast("La suite n’a pas pu être proposée.");
-  }
-}
-$("#b-ia").addEventListener("mousedown", e=>e.preventDefault());
-$("#b-ia").addEventListener("click", continuerIA);
-
 /* ---------- Barre d’outils ---------- */
 document.execCommand("defaultParagraphSeparator", false, "p");
 document.querySelectorAll(".ob[data-cmd]").forEach(b=>{
   b.addEventListener("mousedown", e=>e.preventDefault());
-  b.addEventListener("click", ()=>{ page.focus(); document.execCommand(b.dataset.cmd, false, null); majBoutons(); sauverBientot(); });
+  b.addEventListener("click", ()=>{
+    page.focus();
+    if(b.dataset.cmd === "undo") return annuler();
+    if(b.dataset.cmd === "redo") return retablir();
+    memoriser(); document.execCommand(b.dataset.cmd, false, null); groupe = { type:"", t:0 }; majBoutons(); sauverBientot();
+  });
 });
 function majBoutons(){
   ["bold","italic","underline","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList"].forEach(c=>{
@@ -1101,17 +1159,18 @@ let selSauvee = null;
 function garderSel(){ const s=getSelection(); if(s.rangeCount && page.contains(s.anchorNode)) selSauvee = s.getRangeAt(0).cloneRange(); }
 function rendreSel(){ page.focus(); if(selSauvee){ const s=getSelection(); s.removeAllRanges(); s.addRange(selSauvee); } }
 ["#style","#police","#taille","#couleur"].forEach(id=>{ $(id).addEventListener("pointerdown", garderSel); $(id).addEventListener("focus", garderSel); });
-$("#style").addEventListener("change", e=>{ rendreSel(); document.execCommand("formatBlock", false, e.target.value); sauverBientot(); });
-$("#police").addEventListener("change", e=>{ rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontName", false, e.target.value); sauverBientot(); });
+$("#style").addEventListener("change", e=>{ rendreSel(); memoriser(); document.execCommand("formatBlock", false, e.target.value); sauverBientot(); });
+$("#police").addEventListener("change", e=>{ rendreSel(); memoriser(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontName", false, e.target.value); sauverBientot(); });
 $("#taille").addEventListener("change", e=>{
-  rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontSize", false, "7");
+  rendreSel(); memoriser(); document.execCommand("styleWithCSS", false, true); document.execCommand("fontSize", false, "7");
   page.querySelectorAll('span[style*="xxx-large"], font[size="7"]').forEach(el=>{ el.removeAttribute("size"); el.style.fontSize = e.target.value+"pt"; });
   sauverBientot();
 });
+$("#couleur").addEventListener("change", ()=>memoriser());
 $("#couleur").addEventListener("input", e=>{ rendreSel(); document.execCommand("styleWithCSS", false, true); document.execCommand("foreColor", false, e.target.value); document.querySelector(".couleur span").style.borderColor = e.target.value; sauverBientot(); });
 $("#b-tableau").addEventListener("mousedown", e=>e.preventDefault());
 $("#b-tableau").addEventListener("click", ()=>{
-  page.focus();
+  page.focus(); memoriser();
   const ligne = "<tr>" + "<td><br></td>".repeat(3) + "</tr>";
   document.execCommand("insertHTML", false, `<table data-nouveau="1"><tbody>${ligne.repeat(3)}</tbody></table><p><br></p>`);
   // Le curseur va dans la première case du nouveau tableau (B10).
@@ -1121,13 +1180,14 @@ $("#b-tableau").addEventListener("click", ()=>{
 });
 $("#b-saut").addEventListener("mousedown", e=>e.preventDefault());
 $("#b-saut").addEventListener("click", ()=>{
-  page.focus();
+  page.focus(); memoriser();
   document.execCommand("insertHTML", false, '<hr class="saut-page"><p id="apres-saut"><br></p>');
   const p = $("#apres-saut"); if(p){ p.removeAttribute("id"); const r = document.createRange(); r.setStart(p, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); }
   sauverBientot();
 });
 /* Lignes de tableau : ajout (avec numéro et calcul pour les devis) et suppression. */
 function nouvelleLigne(tr){
+  memoriser();
   const neuve = tr.cloneNode(true);
   const prix = !!tr.querySelector('[data-calc="qte"]');
   const n = prix ? (parseInt(tr.cells[0].textContent) || 0) + 1 : 0;
@@ -1142,6 +1202,7 @@ $("#b-ligne-plus").addEventListener("click", ()=>{ const tr = ligneCourante(); i
 $("#b-ligne-moins").addEventListener("click", ()=>{
   const tr = ligneCourante(); if(!tr){ toast("Placez d’abord le curseur dans une case du tableau."); return; }
   const t = tr.closest("table");
+  memoriser();
   if(t.rows.length <= 1){ t.remove(); } else tr.remove();
   if(t.isConnected && t.dataset.calcul) recalculer(t);
   sauverBientot();
@@ -1221,12 +1282,12 @@ page.addEventListener("paste", e=>{
   const html = dt.getData("text/html");
   const image = [...(dt.files || [])].find(f=>/^image\//.test(f.type));
   if(image && !html){
-    e.preventDefault();
+    e.preventDefault(); memoriser();
     lireImage(image, 1200).then(im=>insererImage(im.src, Math.min(im.largeur, 450))).catch(()=>toast("Cette image n’a pas pu être collée."));
     return;
   }
   if(html){
-    e.preventDefault();
+    e.preventDefault(); memoriser();
     const propre = CiBWord.nettoyerCollage(html);
     if(propre.trim()) document.execCommand("insertHTML", false, propre);
     else document.execCommand("insertText", false, dt.getData("text/plain"));
@@ -1477,7 +1538,7 @@ $("#b-coord").addEventListener("click", ouvrirCoordonnees);
 $("#b-entete").addEventListener("click", async ()=>{
   if(!aCoord()){ if(!(await ouvrirCoordonnees()) || !aCoord()) return; }
   if(page.querySelector("table.entete")){ toast("Ce document a déjà votre en-tête."); return; }
-  page.insertAdjacentHTML("afterbegin", htmlEntete());
+  memoriser(); page.insertAdjacentHTML("afterbegin", htmlEntete());
   sauverBientot(); toast("Papier à en-tête ajouté en haut du document.");
 });
 
@@ -1491,7 +1552,7 @@ $("#fichier-image").addEventListener("change", async e=>{
   catch(err){ toast("Cette image n’a pas pu être insérée. Choisissez une photo ou une image PNG/JPEG."); }
 });
 function insererImage(src, largeur){
-  page.focus();
+  page.focus(); memoriser();
   document.execCommand("insertHTML", false, `<img src="${src}" alt="" style="width:${Math.round(largeur)}px">`);
   sauverBientot();
 }
@@ -1511,6 +1572,7 @@ document.addEventListener("click", e=>{ if(selImage && !e.target.closest("#barre
 $("#barre-image").addEventListener("mousedown", e=>e.preventDefault());
 $("#barre-image").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b || !selImage) return;
+  memoriser();
   if(b.dataset.action === "suppr"){ const im = selImage; choisirImage(null); im.remove(); }
   else { selImage.style.width = b.dataset.taille + "px"; selImage.style.height = ""; selImage.removeAttribute("width"); selImage.removeAttribute("height"); choisirImage(selImage); }
   sauverBientot();
@@ -1540,6 +1602,37 @@ function recalculer(t){
 let calculT;
 page.addEventListener("input", ()=>{ clearTimeout(calculT); calculT = setTimeout(()=>page.querySelectorAll('table[data-calcul="prix"]').forEach(recalculer), 250); });
 page.addEventListener("focusout", ()=>page.querySelectorAll('table[data-calcul="prix"]').forEach(recalculer));
+
+/* ---------- Repères de pages A4 (A7) ---------- */
+// Sur ordinateur (page de 21 cm à l'écran), un trait indique où commencera chaque nouvelle page à l'impression.
+function reperesPages(){
+  const zone = $("#reperes"); zone.innerHTML = "";
+  if($("#editeur").classList.contains("hidden") || Math.abs(page.offsetWidth - 794) > 2) return;
+  const cs = getComputedStyle(page), haut = parseFloat(cs.paddingTop), bas = parseFloat(cs.paddingBottom);
+  const H = 1123 - haut - bas;                    // hauteur utile d'une page A4
+  const dernier = page.lastElementChild; if(!dernier) return;
+  const fin = dernier.offsetTop + dernier.offsetHeight;
+  const sauts = [...page.querySelectorAll(":scope > hr.saut-page")].map(h=>h.offsetTop + h.offsetHeight);
+  let debut = page.offsetTop + haut, n = 1;
+  for(let garde = 0; garde < 500; garde++){
+    const limite = debut + H;
+    const saut = sauts.find(y=>y > debut && y <= limite);
+    if(saut !== undefined){ debut = saut; n++; continue; }       // saut de page : déjà visible dans le texte
+    if(fin <= limite) break;
+    n++;
+    const d = document.createElement("div"); d.className = "repere";
+    d.style.top = limite + "px"; d.style.left = page.offsetLeft + "px"; d.style.width = page.offsetWidth + "px";
+    const t = document.createElement("span"); t.textContent = "Page " + n; d.appendChild(t);
+    zone.appendChild(d);
+    debut = limite;
+  }
+  zone.dataset.pages = n;
+}
+let reperesT;
+function reperesBientot(){ clearTimeout(reperesT); reperesT = setTimeout(reperesPages, 300); }
+page.addEventListener("input", reperesBientot);
+window.addEventListener("resize", reperesBientot);
+page.addEventListener("load", reperesBientot, true);   // images chargées
 
 /* ---------- Menu « ⋯ » ---------- */
 function fermerMenu(){ $("#menu").classList.add("hidden"); $("#b-menu").setAttribute("aria-expanded","false"); }
